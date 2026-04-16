@@ -12,27 +12,26 @@ st.write("📂 Files in directory:", os.listdir())
 file_path = "dataset.csv"
 
 # =========================
-# LOAD DATASET
+# LOAD DATASET (TAB FIX)
 # =========================
 if not os.path.exists(file_path):
     st.error("❌ dataset.csv NOT FOUND")
 else:
     try:
-        df = pd.read_csv(file_path, engine='python', quotechar='"')
+        df = pd.read_csv(file_path, sep='\t')   # 🔥 FIX HERE
     except:
-        df = pd.read_csv(file_path, encoding='latin1', engine='python', quotechar='"', on_bad_lines='skip')
+        df = pd.read_csv(file_path, sep='\t', encoding='latin1')
 
     st.success("✅ Dataset Loaded Successfully")
 
-    # Show columns BEFORE fixing
+    # Debug columns
     st.write("Columns before fix:", df.columns)
 
     # =========================
     # FIX COLUMN NAMES
     # =========================
-    df.columns = df.columns.str.strip()   # remove spaces
+    df.columns = df.columns.str.strip()
 
-    # Show columns AFTER fixing
     st.write("Columns after fix:", df.columns)
 
     # =========================
