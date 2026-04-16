@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 import os
+from streamlit_mic_recorder import mic_recorder
 
-st.title("🧠 Sinus Detection System")
+st.title("🧠 Sinus Detection System (Tamil + Voice)")
 
 # =========================
-# DEBUG: CHECK FILES
+# FILE CHECK
 # =========================
-st.write("📂 Files in directory:", os.listdir())
+st.write("📂 Files:", os.listdir())
 
 file_path = "dataset.csv"
 
@@ -15,24 +16,11 @@ file_path = "dataset.csv"
 # LOAD DATASET (TAB FIX)
 # =========================
 if not os.path.exists(file_path):
-    st.error("❌ dataset.csv NOT FOUND")
+    st.error("dataset.csv NOT FOUND")
 else:
-    try:
-        df = pd.read_csv(file_path, sep='\t')   # 🔥 FIX HERE
-    except:
-        df = pd.read_csv(file_path, sep='\t', encoding='latin1')
+    df = pd.read_csv(file_path, sep='\t')
 
-    st.success("✅ Dataset Loaded Successfully")
-
-    # Debug columns
-    st.write("Columns before fix:", df.columns)
-
-    # =========================
-    # FIX COLUMN NAMES
-    # =========================
     df.columns = df.columns.str.strip()
-
-    st.write("Columns after fix:", df.columns)
 
     # =========================
     # PREPROCESS
@@ -41,12 +29,47 @@ else:
     df['Symptoms_List'] = df['Symptoms'].apply(lambda x: x.split(', '))
 
     # =========================
-    # USER INPUT
+    # DISEASE INFO
     # =========================
-    symptoms = st.text_input("Enter symptoms (comma separated):")
-    days = st.number_input("How many days have you had this problem?", min_value=0)
-    cold_food = st.selectbox("Did you consume cold items?", ["no", "yes"])
-    fever = st.selectbox("Do you have fever?", ["no", "yes"])
+    disease_info = {
+        "Sinusitis": {
+            "advice": ["Avoid cold items", "Steam inhalation", "Drink warm fluids"],
+            "tamil": "இது சைனஸ் பிரச்சனை. மூக்கடைப்பு மற்றும் தலைவலி இருக்கும்."
+        },
+        "Common Cold": {
+            "advice": ["Take rest", "Drink warm water", "Use steam"],
+            "tamil": "இது சாதாரண சளி. ஓய்வு எடுத்துக் கொள்ளவும்."
+        },
+        "Influenza": {
+            "advice": ["Take rest", "Drink fluids", "Consult doctor"],
+            "tamil": "இது காய்ச்சல். மருத்துவரை அணுகவும்."
+        },
+        "Asthma": {
+            "advice": ["Avoid dust", "Use inhaler", "Consult doctor"],
+            "tamil": "இது ஆஸ்துமா. மூச்சு சிரமம் ஏற்படும்."
+        },
+        "Diabetes": {
+            "advice": ["Control sugar", "Exercise", "Check regularly"],
+            "tamil": "இது நீரிழிவு நோய்."
+        }
+    }
+
+    # =========================
+    # INPUT SECTION
+    # =========================
+    st.subheader("📝 Enter Symptoms")
+
+    symptoms = st.text_input("Type symptoms (comma separated):")
+
+    st.subheader("🎤 Tamil Voice Input")
+    audio = mic_recorder(start_prompt="Start recording", stop_prompt="Stop")
+
+    if audio:
+        st.success("Voice recorded (convert externally if needed)")
+
+    days = st.number_input("How many days?", min_value=0)
+    cold_food = st.selectbox("Cold items?", ["no", "yes"])
+    fever = st.selectbox("Fever?", ["no", "yes"])
 
     # =========================
     # PREDICTION
@@ -54,11 +77,10 @@ else:
     if st.button("Predict"):
 
         if symptoms.strip() == "":
-            st.warning("Please enter symptoms")
+            st.warning("Enter symptoms")
         else:
             user_symptoms = symptoms.lower().split(', ')
 
-            # Matching function
             def calculate_match(row_symptoms, user_symptoms):
                 match = len(set(row_symptoms) & set(user_symptoms))
                 total = len(row_symptoms)
@@ -68,9 +90,7 @@ else:
                 lambda x: calculate_match(x, user_symptoms)
             )
 
-            # =========================
-            # TOP 3
-            # =========================
+            # Top 3
             st.subheader("🔝 Top 3 Predictions")
             top3 = df.sort_values(by='Match_Percentage', ascending=False).head(3)
 
@@ -82,26 +102,29 @@ else:
             # =========================
             # SINUS LOGIC
             # =========================
-            sinus_keywords = ["headache", "nasal congestion", "facial pain", "pressure around eyes"]
+            sinus_keywords = ["headache", "nasal congestion", "facial pain", "pressure around eyes", "runny nose"]
+
             sinus_match = len(set(sinus_keywords) & set(user_symptoms))
 
-            if sinus_match >= 2:
+            if sinus_match >= 1:
                 disease = "Sinusitis"
-                confidence = 60 + sinus_match * 10
+                confidence = 70 + sinus_match * 10
                 st.warning("⚠️ Possible Sinus Detected")
             else:
                 disease = result['Disease']
                 confidence = round(result['Match_Percentage'] * 100, 2)
 
             # =========================
-            # UPDATE CONFIDENCE
+            # IMPROVE CONFIDENCE
             # =========================
+            if len(user_symptoms) >= 2:
+                confidence += 10
             if days > 3:
                 confidence += 10
             if cold_food == "yes":
                 confidence += 5
             if fever == "yes":
-                confidence += 10
+                confidence += 5
 
             confidence = min(confidence, 100)
 
@@ -116,12 +139,12 @@ else:
                 severity = "Severe"
 
             # =========================
-            # FINAL OUTPUT
+            # OUTPUT
             # =========================
             st.subheader("🔍 Final Result")
-            st.write("**Predicted Disease:**", disease)
-            st.write("**Confidence:**", confidence, "%")
-            st.write("**Severity Level:**", severity)
+            st.write("Disease:", disease)
+            st.write("Confidence:", confidence, "%")
+            st.write("Severity:", severity)
 
             if confidence > 80:
                 st.error("⚠️ High risk - consult doctor")
@@ -130,23 +153,20 @@ else:
             # ADVICE
             # =========================
             st.subheader("💊 Advice")
-            if disease == "Sinusitis":
-                st.write("• Avoid cold items")
-                st.write("• Take steam inhalation")
-                st.write("• Drink warm fluids")
+
+            if disease in disease_info:
+                for tip in disease_info[disease]["advice"]:
+                    st.write("•", tip)
             else:
                 st.write("• Take rest")
                 st.write("• Drink fluids")
-                st.write("• Consult doctor if needed")
 
             # =========================
             # TAMIL OUTPUT
             # =========================
             st.subheader("🧠 Tamil Explanation")
-            if disease == "Sinusitis":
-                st.write("இது சைனஸ் பிரச்சனையாக இருக்க வாய்ப்பு அதிகம்.")
-                st.write("மூக்கடைப்பு மற்றும் தலைவலி முக்கிய அறிகுறிகள்.")
-                st.write("நீராவி பிடிக்கவும், குளிர்பானங்களை தவிர்க்கவும்.")
+
+            if disease in disease_info:
+                st.write(disease_info[disease]["tamil"])
             else:
-                st.write("இது பொதுவான உடல்நல பிரச்சனையாக இருக்கலாம்.")
-                st.write("தேவையான ஓய்வு எடுக்கவும் மற்றும் மருத்துவரை அணுகவும்.")
+                st.write("இது பொதுவான உடல்நல பிரச்சனை ஆக இருக்கலாம்.")
