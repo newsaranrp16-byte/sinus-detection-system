@@ -1,0 +1,91 @@
+import streamlit as st
+import pandas as pd
+
+st.title("🧠 Sinus Detection System")
+
+# Load dataset
+df = pd.read_csv("dataset.csv")
+
+# Preprocess
+df['Symptoms'] = df['Symptoms'].str.lower()
+df['Symptoms_List'] = df['Symptoms'].apply(lambda x: x.split(', '))
+
+# Inputs
+symptoms = st.text_input("Enter symptoms (comma separated):")
+days = st.number_input("How many days have you had this problem?", min_value=0)
+cold_food = st.selectbox("Did you consume cold items?", ["no", "yes"])
+fever = st.selectbox("Do you have fever?", ["no", "yes"])
+
+if st.button("Predict"):
+
+    user_symptoms = symptoms.lower().split(', ')
+
+    def calculate_match(row_symptoms, user_symptoms):
+        match = len(set(row_symptoms) & set(user_symptoms))
+        total = len(row_symptoms)
+        return match / total if total > 0 else 0
+
+    df['Match_Percentage'] = df['Symptoms_List'].apply(lambda x: calculate_match(x, user_symptoms))
+
+    top3 = df.sort_values(by='Match_Percentage', ascending=False).head(3)
+
+    st.subheader("Top 3 Predictions")
+    for i, row in top3.iterrows():
+        st.write(f"{row['Disease']} - {round(row['Match_Percentage']*100,2)}%")
+
+    result = top3.iloc[0]
+
+    # Sinus logic
+    sinus_keywords = ["headache", "nasal congestion", "facial pain", "pressure around eyes"]
+    sinus_match = len(set(sinus_keywords) & set(user_symptoms))
+
+    if sinus_match >= 2:
+        disease = "Sinusitis"
+        confidence = 60 + sinus_match * 10
+    else:
+        disease = result['Disease']
+        confidence = round(result['Match_Percentage'] * 100, 2)
+
+    # Update confidence
+    if days > 3:
+        confidence += 10
+    if cold_food == "yes":
+        confidence += 5
+    if fever == "yes":
+        confidence += 10
+
+    confidence = min(confidence, 100)
+
+    # Severity
+    if confidence < 40:
+        severity = "Mild"
+    elif confidence < 70:
+        severity = "Moderate"
+    else:
+        severity = "Severe"
+
+    # Output
+    st.subheader("Final Result")
+    st.write("Predicted Disease:", disease)
+    st.write("Confidence:", confidence, "%")
+    st.write("Severity:", severity)
+
+    if confidence > 80:
+        st.warning("⚠️ High risk - consult doctor")
+
+    # Advice
+    st.subheader("Advice")
+    if disease == "Sinusitis":
+        st.write("Avoid cold items")
+        st.write("Take steam inhalation")
+        st.write("Drink warm fluids")
+    else:
+        st.write("Take rest")
+        st.write("Drink fluids")
+
+    # Tamil explanation
+    st.subheader("Tamil Explanation")
+    if disease == "Sinusitis":
+        st.write("இது சைனஸ் பிரச்சனையாக இருக்க வாய்ப்பு அதிகம்.")
+    else:
+        st.write("இது பொதுவான உடல்நல பிரச்சனை ஆக இருக்கலாம்.")
