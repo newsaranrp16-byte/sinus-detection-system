@@ -12,10 +12,10 @@ st.write("📂 Files in directory:", os.listdir())
 file_path = "dataset.csv"
 
 # =========================
-# CHECK FILE EXISTS
+# LOAD DATASET
 # =========================
 if not os.path.exists(file_path):
-    st.error("❌ dataset.csv NOT FOUND. Please upload correctly in GitHub.")
+    st.error("❌ dataset.csv NOT FOUND")
 else:
     try:
         df = pd.read_csv(file_path, engine='python', quotechar='"')
@@ -24,8 +24,16 @@ else:
 
     st.success("✅ Dataset Loaded Successfully")
 
-    # Show preview (you can remove later)
-    st.write(df.head())
+    # Show columns BEFORE fixing
+    st.write("Columns before fix:", df.columns)
+
+    # =========================
+    # FIX COLUMN NAMES
+    # =========================
+    df.columns = df.columns.str.strip()   # remove spaces
+
+    # Show columns AFTER fixing
+    st.write("Columns after fix:", df.columns)
 
     # =========================
     # PREPROCESS
@@ -42,7 +50,7 @@ else:
     fever = st.selectbox("Do you have fever?", ["no", "yes"])
 
     # =========================
-    # PREDICT BUTTON
+    # PREDICTION
     # =========================
     if st.button("Predict"):
 
