@@ -3,22 +3,34 @@ import pandas as pd
 
 st.title("🧠 Sinus Detection System")
 
-# Load dataset with encoding fix
+# =========================
+# LOAD DATASET (FINAL FIX)
+# =========================
 try:
-    df = pd.read_csv("dataset.csv")
+    df = pd.read_csv("dataset.csv", engine='python', quotechar='"')
 except:
-    df = pd.read_csv("dataset.csv", encoding='latin1')
+    df = pd.read_csv("dataset.csv", encoding='latin1', engine='python', quotechar='"', on_bad_lines='skip')
 
-# Preprocess
-df['Symptoms'] = df['Symptoms'].str.lower()
+# Debug (you can remove later)
+st.write("Dataset Loaded:", df.shape)
+
+# =========================
+# PREPROCESS
+# =========================
+df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
 df['Symptoms_List'] = df['Symptoms'].apply(lambda x: x.split(', '))
 
-# Inputs
+# =========================
+# USER INPUT
+# =========================
 symptoms = st.text_input("Enter symptoms (comma separated):")
 days = st.number_input("How many days have you had this problem?", min_value=0)
 cold_food = st.selectbox("Did you consume cold items?", ["no", "yes"])
 fever = st.selectbox("Do you have fever?", ["no", "yes"])
 
+# =========================
+# PREDICTION
+# =========================
 if st.button("Predict"):
 
     if symptoms.strip() == "":
@@ -34,7 +46,9 @@ if st.button("Predict"):
 
         df['Match_Percentage'] = df['Symptoms_List'].apply(lambda x: calculate_match(x, user_symptoms))
 
-        # Top 3 predictions
+        # =========================
+        # TOP 3
+        # =========================
         st.subheader("🔝 Top 3 Predictions")
         top3 = df.sort_values(by='Match_Percentage', ascending=False).head(3)
 
@@ -43,7 +57,9 @@ if st.button("Predict"):
 
         result = top3.iloc[0]
 
-        # Sinus logic
+        # =========================
+        # SINUS LOGIC
+        # =========================
         sinus_keywords = ["headache", "nasal congestion", "facial pain", "pressure around eyes"]
         sinus_match = len(set(sinus_keywords) & set(user_symptoms))
 
@@ -55,7 +71,9 @@ if st.button("Predict"):
             disease = result['Disease']
             confidence = round(result['Match_Percentage'] * 100, 2)
 
-        # Update confidence
+        # =========================
+        # UPDATE CONFIDENCE
+        # =========================
         if days > 3:
             confidence += 10
         if cold_food == "yes":
@@ -65,7 +83,9 @@ if st.button("Predict"):
 
         confidence = min(confidence, 100)
 
-        # Severity
+        # =========================
+        # SEVERITY
+        # =========================
         if confidence < 40:
             severity = "Mild"
         elif confidence < 70:
@@ -73,7 +93,9 @@ if st.button("Predict"):
         else:
             severity = "Severe"
 
-        # Final Output
+        # =========================
+        # FINAL OUTPUT
+        # =========================
         st.subheader("🔍 Final Result")
         st.write("**Predicted Disease:**", disease)
         st.write("**Confidence:**", confidence, "%")
@@ -82,7 +104,9 @@ if st.button("Predict"):
         if confidence > 80:
             st.error("⚠️ High risk - consult doctor")
 
-        # Advice
+        # =========================
+        # ADVICE
+        # =========================
         st.subheader("💊 Advice")
         if disease == "Sinusitis":
             st.write("• Avoid cold items")
@@ -93,7 +117,9 @@ if st.button("Predict"):
             st.write("• Drink fluids")
             st.write("• Consult doctor if needed")
 
-        # Tamil Explanation
+        # =========================
+        # TAMIL OUTPUT
+        # =========================
         st.subheader("🧠 Tamil Explanation")
         if disease == "Sinusitis":
             st.write("இது சைனஸ் பிரச்சனையாக இருக்க வாய்ப்பு அதிகம்.")
