@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
 
 st.title("🧠 Tamil Medical Assistant - Sinus Detection System")
 
@@ -18,7 +19,6 @@ try:
 except:
     df = pd.read_csv(file_path, sep=',', encoding='latin1')
 
-# Fix column names
 df.columns = df.columns.str.strip()
 
 # =========================
@@ -28,159 +28,64 @@ df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
 df['Symptoms_List'] = df['Symptoms'].apply(lambda x: x.split(', '))
 
 # =========================
-# DISEASE INFO (ALL 30)
+# 🔥 PASTE YOUR FULL 30 DISEASE DATA HERE
 # =========================
 disease_info = {
+
     "Allergy": {
-        "advice": ["Avoid allergens", "Take antihistamines"],
-        "english": "Avoid allergens like dust, pollen, and certain foods. Maintain hygiene and consult a doctor if symptoms worsen.",
-        "tamil": "அலர்ஜி இருந்தால் தூசி மற்றும் காரணிகளை தவிர்க்கவும். சுத்தமாக இருங்கள்."
+        "advice": ["Avoid allergens", "Take antihistamines", "Consult doctor"],
+        "english": "If you are experiencing allergies, it is important to identify and avoid triggers such as dust, pollen, certain foods, or environmental factors. Keeping your surroundings clean and maintaining good hygiene helps reduce exposure. Regular hand washing and following a healthy lifestyle can improve your immunity. If symptoms such as sneezing, itching, or breathing difficulty become severe, consult a doctor and take medications as prescribed.",
+        "tamil": "உங்களுக்கு அலர்ஜி இருந்தால், அதற்கு காரணமான தூசி, சில உணவுகள் அல்லது பூமருவுகள் போன்றவற்றை தவிர்க்க வேண்டும். உங்கள் சுற்றுப்புறத்தை சுத்தமாக வைத்துக் கொள்ளுங்கள், அடிக்கடி கைகளை கழுவுங்கள், மற்றும் ஆரோக்கியமான வாழ்க்கை முறையை பின்பற்றுங்கள். அறிகுறிகள் அதிகமாக இருந்தால் மருத்துவரை அணுகி மருந்துகளை சரியாக எடுத்துக்கொள்ளுங்கள்."
     },
+
     "Thyroid Disorder": {
-        "advice": ["Take medicines", "Regular checkup"],
-        "english": "Maintain hormone balance with medication and regular checkups.",
-        "tamil": "தைராய்டு மருந்துகளை சரியாக எடுத்துக்கொள்ள வேண்டும்."
+        "advice": ["Check hormone levels", "Take prescribed medicines"],
+        "english": "People with thyroid disorders should take medications regularly as prescribed by their doctor. Maintaining a balanced diet with proper iodine intake is important for hormonal balance. Regular physical activity improves metabolism and overall health. Periodic medical checkups are necessary to monitor hormone levels and adjust treatment accordingly.",
+        "tamil": "தைராய்டு கோளாறு உள்ளவர்கள் நேரத்திற்கு மருந்துகளை எடுத்துக்கொள்வது மிகவும் முக்கியம். ஆரோக்கியமான உணவு முறையைப் பின்பற்றி, ஐயோடின் அளவு சரியாக உள்ள உணவுகளை எடுத்துக்கொள்ளுங்கள். உடற்பயிற்சி செய்வது உடல் சமநிலையை மேம்படுத்தும். அடிக்கடி மருத்துவரை சந்தித்து பரிசோதனை செய்து, ஹார்மோன் அளவை கண்காணிப்பதும் அவசியம்."
     },
+
     "Influenza": {
-        "advice": ["Rest", "Drink fluids"],
-        "english": "Take rest and stay hydrated to recover faster.",
-        "tamil": "ஓய்வு எடுத்து நீர் குடிக்கவும்."
+        "advice": ["Take rest", "Drink fluids", "Consult doctor"],
+        "english": "Influenza (flu) requires proper rest and hydration to allow the body to recover. Drinking warm fluids such as water, soups, and juices helps maintain hydration and supports recovery. Eating nutritious food strengthens the immune system. If symptoms like fever, cough, or fatigue worsen or persist, consult a doctor for proper treatment.",
+        "tamil": "இன்ஃப்ளூயன்சா (காய்ச்சல்) வந்தால் அதிக ஓய்வு எடுத்து, சூடான நீர் மற்றும் சத்தான உணவுகளை உட்கொள்ள வேண்டும். தண்ணீர் அதிகமாக குடித்து உடலை நீர்ச்சத்து குறையாமல் பாதுகாத்துக்கொள்ளுங்கள். இருமல், காய்ச்சல் அதிகமாக இருந்தால் மருத்துவரை அணுகி மருந்துகளை சரியாக எடுத்துக்கொள்ள வேண்டும்."
     },
+
     "Stroke": {
-        "advice": ["Emergency care"],
-        "english": "Stroke is an emergency. Seek immediate medical help.",
-        "tamil": "ஸ்ட்ரோக் அவசரநிலை. உடனே மருத்துவரை அணுகவும்."
+        "advice": ["Immediate medical attention", "Do not delay"],
+        "english": "Stroke is a serious medical emergency and requires immediate attention. It is important to control blood pressure, sugar levels, and cholesterol to prevent it. Following a healthy lifestyle and avoiding smoking and alcohol can reduce risk. If symptoms such as sudden weakness, speech difficulty, or dizziness occur, seek medical help immediately.",
+        "tamil": "ஸ்ட்ரோக் ஏற்படாமல் இருக்க இரத்த அழுத்தம், சர்க்கரை அளவு போன்றவற்றை கட்டுப்பாட்டில் வைத்திருக்க வேண்டும். ஆரோக்கியமான உணவு முறையை பின்பற்றி, புகைபிடித்தல் மற்றும் மதுபானத்தை தவிர்க்கவும். திடீர் தலைச்சுற்றல், பேச முடியாமை, உடல் ஒரு பக்கம் பலவீனம் போன்ற அறிகுறிகள் தெரிந்தால் உடனே மருத்துவரை அணுகுவது மிகவும் அவசியம்."
     },
+
     "Heart Disease": {
-        "advice": ["Exercise", "Healthy diet"],
-        "english": "Maintain a healthy lifestyle and avoid fatty foods.",
-        "tamil": "ஆரோக்கியமான உணவு மற்றும் உடற்பயிற்சி அவசியம்."
+        "advice": ["Avoid oily food", "Exercise regularly", "Consult doctor"],
+        "english": "To manage or prevent heart disease, it is important to follow a healthy lifestyle. Avoid foods high in oil, fat, and cholesterol. Regular exercise helps improve heart function and overall health. Monitoring blood pressure and sugar levels is essential. If symptoms such as chest pain or breathlessness occur, consult a doctor immediately.",
+        "tamil": "இதய நோய்களைத் தவிர்க்க சீரான உணவு முறையை பின்பற்றி, எண்ணெய் மற்றும் அதிக கொழுப்பு உள்ள உணவுகளை குறைக்க வேண்டும். தினமும் உடற்பயிற்சி செய்வது இதய ஆரோக்கியத்தை மேம்படுத்தும். புகைபிடித்தல், மதுபானம் போன்றவற்றை தவிர்த்து, இரத்த அழுத்தம் மற்றும் சர்க்கரை அளவை கட்டுப்பாட்டில் வைத்திருப்பதும் முக்கியம். மார்பு வலி, மூச்சுத்திணறல் போன்ற அறிகுறிகள் இருந்தால் உடனே மருத்துவரை அணுக வேண்டும்."
     },
+
     "Food Poisoning": {
-        "advice": ["ORS", "Rest"],
-        "english": "Stay hydrated and avoid outside food.",
-        "tamil": "ORS குடித்து ஓய்வு எடுக்கவும்."
+        "advice": ["Drink ORS", "Avoid outside food", "Rest"],
+        "english": "Food poisoning occurs due to contaminated food or water. It is important to stay hydrated by drinking ORS or plenty of fluids. Eat light and easily digestible foods. Avoid outside or unhygienic food. If symptoms like vomiting or diarrhea persist, consult a doctor immediately.",
+        "tamil": "உணவு விஷத்தன்மை (Food poisoning) ஏற்பட்டால் உடனே ஓய்வு எடுத்து, அதிகமாக தண்ணீர் அல்லது ORS குடித்து உடல் நீர்ச்சத்தை பேண வேண்டும். சுத்தமான, எளிதில் செரிமானமாகும் உணவுகளை மட்டும் எடுத்துக்கொள்ளுங்கள். வாந்தி, வயிற்றுப்போக்கு அதிகமாக இருந்தால் அல்லது நீடித்தால் உடனே மருத்துவரை அணுகுவது அவசியம்."
     },
-    "Bronchitis": {
-        "advice": ["Avoid smoke", "Rest"],
-        "english": "Avoid smoke and take rest.",
-        "tamil": "புகை தவிர்த்து ஓய்வு எடுக்கவும்."
-    },
-    "COVID-19": {
-        "advice": ["Isolate", "Mask"],
-        "english": "Isolate and follow safety precautions.",
-        "tamil": "தனிமைப்படுத்தி முககவசம் அணியவும்."
-    },
-    "Dermatitis": {
-        "advice": ["Use creams"],
-        "english": "Keep skin clean and use prescribed creams.",
-        "tamil": "தோலை சுத்தமாக வைத்துக் கொள்ளுங்கள்."
-    },
-    "Diabetes": {
-        "advice": ["Control sugar"],
-        "english": "Maintain sugar levels and exercise.",
-        "tamil": "சர்க்கரை அளவை கட்டுப்படுத்தவும்."
-    },
-    "Arthritis": {
-        "advice": ["Exercise"],
-        "english": "Do light exercise and avoid stress on joints.",
-        "tamil": "மூட்டுகளை கவனமாக வைத்துக்கொள்ளுங்கள்."
-    },
+
     "Sinusitis": {
-        "advice": ["Steam inhalation"],
-        "english": "Use steam inhalation and avoid cold.",
-        "tamil": "நீராவி பிடிக்கவும், குளிரை தவிர்க்கவும்."
+        "advice": ["Steam inhalation", "Avoid cold items"],
+        "english": "Sinusitis occurs when nasal passages become inflamed, causing symptoms like headache, nasal blockage, and facial pressure. Steam inhalation helps clear congestion and improves breathing. Drink warm fluids and avoid cold foods. If symptoms persist for several days, consult a doctor for treatment.",
+        "tamil": "சைனஸைட்டிஸ் (Sinusitis) இருந்தால் வெதுவெதுப்பான நீர் ஆவி பிடித்தல் (steam inhalation) மூக்கடைப்பை குறைக்க உதவும். அதிகமாக தண்ணீர் குடித்து உடலை நீர்ச்சத்துடன் வைத்துக்கொள்ளுங்கள். தூசி, குளிர் காற்று போன்றவற்றை தவிர்க்கவும். தலைவலி, மூக்கடைப்பு நீடித்தால் மருத்துவரை அணுகி சரியான சிகிச்சை பெறுவது அவசியம்."
     },
-    "Dementia": {
-        "advice": ["Care"],
-        "english": "Provide mental support and medical care.",
-        "tamil": "மனஅழுத்தமின்றி கவனிக்கவும்."
+
+    "Diabetes": {
+        "advice": ["Control sugar", "Exercise", "Regular checkup"],
+        "english": "Diabetes requires proper management of blood sugar levels. Follow a balanced diet and avoid excessive sugar intake. Regular exercise improves insulin sensitivity. Monitor sugar levels regularly and follow medications as prescribed by your doctor.",
+        "tamil": "நீரிழிவு (Diabetes) உள்ளவர்கள் சர்க்கரை அளவை கட்டுப்பாட்டில் வைத்திருக்க வேண்டும். சீரான உணவு முறையை பின்பற்றி, இனிப்புகள் மற்றும் அதிக கார்போஹைட்ரேட் உள்ள உணவுகளை குறைக்க வேண்டும். தினமும் உடற்பயிற்சி செய்து, மருத்துவரின் ஆலோசனையின்படி மருந்துகள் அல்லது இன்சுலின் எடுத்துக்கொள்வது மிகவும் முக்கியம்."
     },
-    "Parkinson's": {
-        "advice": ["Medication"],
-        "english": "Follow medication and exercise.",
-        "tamil": "மருந்துகளை தவறாமல் எடுத்துக்கொள்ளவும்."
-    },
-    "Obesity": {
-        "advice": ["Diet", "Exercise"],
-        "english": "Maintain diet and exercise regularly.",
-        "tamil": "உடல் எடையை கட்டுப்படுத்தவும்."
-    },
-    "Asthma": {
-        "advice": ["Inhaler"],
-        "english": "Avoid triggers and use inhaler.",
-        "tamil": "தூசி தவிர்த்து இன்ஹேலர் பயன்படுத்தவும்."
-    },
-    "Depression": {
-        "advice": ["Talk", "Relax"],
-        "english": "Talk to someone and relax.",
-        "tamil": "நண்பர்களுடன் பேசுங்கள்."
-    },
-    "Gastritis": {
-        "advice": ["Avoid spicy food"],
-        "english": "Eat regularly and avoid spicy food.",
-        "tamil": "காரம் தவிர்க்கவும்."
-    },
-    "Liver Disease": {
-        "advice": ["Avoid alcohol"],
-        "english": "Avoid alcohol and follow healthy diet.",
-        "tamil": "மதுபானம் தவிர்க்கவும்."
-    },
-    "Epilepsy": {
-        "advice": ["Medication"],
-        "english": "Take medicines regularly.",
-        "tamil": "மருந்துகளை தவறாமல் எடுத்துக்கொள்ளுங்கள்."
-    },
-    "IBS": {
-        "advice": ["Diet control"],
-        "english": "Maintain diet and reduce stress.",
-        "tamil": "உணவு முறையை சரி செய்யுங்கள்."
-    },
-    "Tuberculosis": {
-        "advice": ["Complete treatment"],
-        "english": "Complete full course of medication.",
-        "tamil": "மருந்துகளை முழுமையாக எடுத்துக்கொள்ளுங்கள்."
-    },
-    "Pneumonia": {
-        "advice": ["Rest"],
-        "english": "Take rest and medications.",
-        "tamil": "ஓய்வு எடுக்கவும்."
-    },
-    "Anemia": {
-        "advice": ["Iron food"],
-        "english": "Eat iron-rich foods.",
-        "tamil": "இரும்புச்சத்து உணவுகள் எடுத்துக்கொள்ளுங்கள்."
-    },
-    "Migraine": {
-        "advice": ["Avoid stress"],
-        "english": "Avoid stress and take rest.",
-        "tamil": "மனஅழுத்தம் தவிர்க்கவும்."
-    },
+
     "Common Cold": {
-        "advice": ["Rest"],
-        "english": "Take rest and drink warm fluids.",
-        "tamil": "ஓய்வு எடுக்கவும்."
-    },
-    "Anxiety": {
-        "advice": ["Meditation"],
-        "english": "Practice relaxation and meditation.",
-        "tamil": "தியானம் செய்யுங்கள்."
-    },
-    "Chronic Kidney Disease": {
-        "advice": ["Monitor kidney"],
-        "english": "Regular checkups and diet control.",
-        "tamil": "சிறுநீரக பரிசோதனை அவசியம்."
-    },
-    "Ulcer": {
-        "advice": ["Avoid spicy food"],
-        "english": "Avoid spicy food and eat on time.",
-        "tamil": "காரம் தவிர்க்கவும்."
-    },
-    "Hypertension": {
-        "advice": ["Reduce salt"],
-        "english": "Reduce salt and exercise.",
-        "tamil": "உப்பு குறைக்கவும்."
+        "advice": ["Rest", "Warm fluids"],
+        "english": "Common cold is usually mild and can be managed with rest and proper hydration. Drinking warm fluids helps relieve symptoms. Maintain hygiene and avoid spreading infection. If symptoms persist or worsen, consult a doctor.",
+        "tamil": "சாதாரண சளி (Common cold) ஏற்பட்டால் அதிகமாக ஓய்வு எடுத்து, சூடான நீர் மற்றும் சூப் போன்றவற்றை குடிப்பது உதவும். கைகளை அடிக்கடி கழுவி சுத்தமாக வைத்துக் கொள்ளுங்கள். இருமல், மூக்கோட்டம் நீடித்தால் அல்லது காய்ச்சல் அதிகமாக இருந்தால் மருத்துவரை அணுகுவது நல்லது."
     }
+
 }
 
 # =========================
@@ -196,6 +101,10 @@ fever = st.selectbox("Fever?", ["no", "yes"])
 # =========================
 if st.button("Predict"):
 
+    if symptoms.strip() == "":
+        st.warning("Please enter symptoms")
+        st.stop()
+
     user_symptoms = symptoms.lower().split(', ')
 
     def match(row):
@@ -203,34 +112,93 @@ if st.button("Predict"):
 
     df['Match'] = df['Symptoms_List'].apply(match)
 
-    top3 = df.sort_values(by='Match', ascending=False).head(3)
+    # 🔥 TAKE TOP 5 FOR PIE CHART
+    top = df.sort_values(by='Match', ascending=False).head(5)
 
-    st.subheader("🔝 Top 3 Predictions")
-    for _, row in top3.iterrows():
-        st.write(f"{row['Disease']} - {round(row['Match']*100,2)}%")
+    best = top.iloc[0]
+    disease = best['Disease']
+    confidence = round(best['Match'] * 100, 2)
 
-    disease = top3.iloc[0]['Disease']
-    confidence = round(top3.iloc[0]['Match'] * 100, 2)
+    # =========================
+    # IMPROVE CONFIDENCE
+    # =========================
+    if days > 3:
+        confidence += 10
+    if cold_food == "yes":
+        confidence += 5
+    if fever == "yes":
+        confidence += 10
 
-    # Adjust confidence
-    if days > 3: confidence += 10
-    if cold_food == "yes": confidence += 5
-    if fever == "yes": confidence += 10
     confidence = min(confidence, 100)
 
     # =========================
-    # OUTPUT
+    # SEVERITY COLOR
+    # =========================
+    if confidence < 40:
+        severity = "Mild"
+        color = "green"
+    elif confidence < 70:
+        severity = "Moderate"
+        color = "orange"
+    else:
+        severity = "Severe"
+        color = "red"
+
+    # =========================
+    # RESULT
     # =========================
     st.subheader("🔍 Final Result")
-    st.write("Disease:", disease)
-    st.write("Confidence:", confidence, "%")
+    st.write("**Predicted Disease:**", disease)
+    st.write("**Confidence:**", confidence, "%")
 
+    st.markdown(f"### Severity: <span style='color:{color}'>{severity}</span>", unsafe_allow_html=True)
+
+    if severity == "Severe":
+        st.error("⚠️ High risk - consult doctor immediately")
+
+    # =========================
+    # 📊 PIE CHART
+    # =========================
+    st.subheader("📊 Disease Probability Distribution")
+
+    labels = top['Disease']
+    values = top['Match']
+
+    fig, ax = plt.subplots()
+    ax.pie(values, labels=labels, autopct='%1.1f%%')
+    ax.set_title("Top Possible Diseases")
+
+    st.pyplot(fig)
+
+    # =========================
+    # ADVICE
+    # =========================
     st.subheader("💊 Advice")
-    for tip in disease_info[disease]["advice"]:
-        st.write("•", tip)
 
+    if disease in disease_info:
+        for tip in disease_info[disease]["advice"]:
+            st.write("•", tip)
+    else:
+        st.write("• Take rest")
+        st.write("• Consult doctor")
+
+    # =========================
+    # ENGLISH
+    # =========================
     st.subheader("📘 English Explanation")
-    st.write(disease_info[disease]["english"])
 
+    if disease in disease_info:
+        st.write(disease_info[disease]["english"])
+    else:
+        st.write("General health issue. Please consult doctor.")
+
+    # =========================
+    # TAMIL
+    # =========================
     st.subheader("🧠 தமிழ் விளக்கம்")
-    st.write(disease_info[disease]["tamil"])
+
+    if disease in disease_info:
+        st.write(disease_info[disease]["tamil"])
+    else:
+        st.write("மருத்துவரை அணுகவும்.")
+
