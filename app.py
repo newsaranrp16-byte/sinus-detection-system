@@ -5,7 +5,7 @@ st.set_page_config(page_title="Smart Tamil Medical Assistant", layout="wide")
 st.title("🧠 Smart Tamil Medical Assistant")
 
 # =========================
-# ALL POSSIBLE SYMPTOMS
+# SYMPTOMS LIST
 # =========================
 all_symptoms = [
     "chest pain","shortness of breath","fatigue","abdominal pain","vomiting",
@@ -16,7 +16,7 @@ all_symptoms = [
 ]
 
 # =========================
-# DISEASE RULES (ALL 30)
+# DISEASE RULES
 # =========================
 disease_rules = {
     "Heart Disease": ["chest pain", "shortness of breath", "fatigue"],
@@ -52,7 +52,25 @@ disease_rules = {
 }
 
 # =========================
-# DISEASE INFO (SAFE)
+# AGE RESTRICTIONS
+# =========================
+age_restrictions = {
+    "Stroke": 40,
+    "Heart Disease": 35,
+    "Hypertension": 30
+}
+
+# =========================
+# STRONG SYMPTOMS REQUIRED
+# =========================
+strong_rules = {
+    "Stroke": ["dizziness"],
+    "Heart Disease": ["chest pain"],
+    "Asthma": ["breathing difficulty"]
+}
+
+# =========================
+# DISEASE INFO
 # =========================
 disease_info = {
     "Allergy": {
@@ -185,7 +203,7 @@ disease_info = {
 }
 
 # =========================
-# UI INPUTS
+# UI INPUT
 # =========================
 st.subheader("🩺 Select Symptoms")
 selected_symptoms = st.multiselect("Choose symptoms", all_symptoms)
@@ -202,37 +220,44 @@ st.subheader("🧾 Medical History")
 existing = st.multiselect("Existing diseases?", ["Diabetes", "BP", "Asthma"])
 
 # =========================
-# PREDICTION
+# PREDICT
 # =========================
 if st.button("Predict"):
-
-    st.write("🔧 Selected Symptoms:", selected_symptoms)
 
     scores = {}
 
     for disease, symptoms in disease_rules.items():
-        match_count = len(set(selected_symptoms) & set(symptoms))
-        base_score = match_count / len(symptoms)
 
+        match = set(selected_symptoms) & set(symptoms)
+        match_count = len(match)
+
+        base_score = match_count / len(symptoms)
         score = base_score * 100
 
-        # AGE BOOST
-        if age > 50 and disease == "Heart Disease":
-            score += 10
+        # ✅ MINIMUM MATCH RULE
+        if match_count < 2:
+            score *= 0.3
 
-        # FEVER BOOST
+        # ✅ AGE FILTER
+        if disease in age_restrictions:
+            if age < age_restrictions[disease]:
+                score *= 0.2
+
+        # ✅ STRONG RULE
+        if disease in strong_rules:
+            if not any(sym in selected_symptoms for sym in strong_rules[disease]):
+                score *= 0.2
+
+        # BOOSTS
         if fever_level == "High" and "fever" in symptoms:
             score += 10
 
-        # PAIN BOOST
         if pain == "High":
             score += 5
 
-        # WORSE CONDITION BOOST
         if progress == "Worse":
             score += 5
 
-        # EXISTING DISEASE BOOST
         if "Diabetes" in existing and disease == "Diabetes":
             score += 10
 
@@ -244,29 +269,21 @@ if st.button("Predict"):
 
     best_disease, confidence = top3[0]
 
-    # =========================
-    # EMERGENCY CHECK 🚨
-    # =========================
+    # 🚨 EMERGENCY
     if "chest pain" in selected_symptoms or "breathing difficulty" in selected_symptoms:
         st.error("🚨 Please consult doctor immediately")
 
-    # =========================
     # TOP 3
-    # =========================
     st.subheader("🔝 Top 3 Predictions")
     for d, s in top3:
         st.write(f"{d} → {round(s,2)}%")
 
-    # =========================
     # FINAL RESULT
-    # =========================
     st.subheader("🔍 Final Result")
     st.success(f"🩺 {best_disease}")
     st.write("Confidence:", round(confidence,2), "%")
 
-    # =========================
     # SEVERITY
-    # =========================
     if confidence < 40:
         st.markdown("### 🟢 Mild")
     elif confidence < 70:
@@ -274,19 +291,13 @@ if st.button("Predict"):
     else:
         st.markdown("### 🔴 Severe")
 
-    # =========================
-    # WHY THIS DISEASE
-    # =========================
+    # WHY
     st.subheader("🤖 Why this disease?")
-    matched = list(set(selected_symptoms) & set(disease_rules[best_disease]))
-    st.write("Matched symptoms:", matched)
+    st.write("Matched symptoms:", list(set(selected_symptoms) & set(disease_rules[best_disease])))
 
-    # =========================
     # ADVICE
-    # =========================
     st.subheader("💊 Advice")
-
-    info = disease_info.get(best_disease, None)
+    info = disease_info.get(best_disease)
 
     if info:
         for tip in info["advice"]:
@@ -294,11 +305,8 @@ if st.button("Predict"):
     else:
         st.write("• Please consult doctor")
 
-    # =========================
     # TAMIL
-    # =========================
     st.subheader("🧠 தமிழ் விளக்கம்")
-
     if info:
         st.write(info["tamil"])
     else:
