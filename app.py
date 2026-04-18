@@ -52,7 +52,7 @@ disease_rules = {
 }
 
 # =========================
-# AGE RESTRICTIONS
+# AGE RESTRICTIONS (STRICT)
 # =========================
 age_restrictions = {
     "Stroke": 40,
@@ -203,7 +203,7 @@ disease_info = {
 }
 
 # =========================
-# UI INPUT
+# INPUT UI
 # =========================
 st.subheader("🩺 Select Symptoms")
 selected_symptoms = st.multiselect("Choose symptoms", all_symptoms)
@@ -216,11 +216,8 @@ fever_level = st.selectbox("Fever level?", ["No fever", "Mild", "High"])
 pain = st.selectbox("Pain level?", ["Low", "Medium", "High"])
 progress = st.selectbox("Condition?", ["Same", "Better", "Worse"])
 
-st.subheader("🧾 Medical History")
-existing = st.multiselect("Existing diseases?", ["Diabetes", "BP", "Asthma"])
-
 # =========================
-# PREDICT
+# PREDICTION
 # =========================
 if st.button("Predict"):
 
@@ -234,21 +231,26 @@ if st.button("Predict"):
         base_score = match_count / len(symptoms)
         score = base_score * 100
 
-        # ✅ MINIMUM MATCH RULE
+        # MINIMUM MATCH RULE
         if match_count < 2:
             score *= 0.3
 
-        # ✅ AGE FILTER
-        if disease in age_restrictions:
-            if age < age_restrictions[disease]:
-                score *= 0.2
-
-        # ✅ STRONG RULE
+        # STRONG SYMPTOM RULE
         if disease in strong_rules:
             if not any(sym in selected_symptoms for sym in strong_rules[disease]):
                 score *= 0.2
 
-        # BOOSTS
+        # 🔴 AGE HARD BLOCK
+        if disease in age_restrictions:
+            if age < age_restrictions[disease]:
+                score = 0
+
+        # 🟢 YOUNG AGE BOOST
+        if age < 18:
+            if disease in ["Asthma", "Pneumonia", "Anxiety"]:
+                score += 20
+
+        # EXTRA BOOSTS
         if fever_level == "High" and "fever" in symptoms:
             score += 10
 
@@ -258,27 +260,30 @@ if st.button("Predict"):
         if progress == "Worse":
             score += 5
 
-        if "Diabetes" in existing and disease == "Diabetes":
-            score += 10
-
         scores[disease] = min(score, 100)
 
-    # SORT
+    # SORT + NORMALIZE
     sorted_diseases = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
     top3 = sorted_diseases[:3]
 
-    best_disease, confidence = top3[0]
+    total = sum([s for _, s in top3]) or 1
 
-    # 🚨 EMERGENCY
+    normalized_top3 = [(d, (s/total)*100) for d, s in top3]
+
+    best_disease, confidence = normalized_top3[0]
+
+    # 🚨 EMERGENCY ALERT
     if "chest pain" in selected_symptoms or "breathing difficulty" in selected_symptoms:
         st.error("🚨 Please consult doctor immediately")
 
-    # TOP 3
+    # =========================
+    # OUTPUT
+    # =========================
     st.subheader("🔝 Top 3 Predictions")
-    for d, s in top3:
+    for d, s in normalized_top3:
         st.write(f"{d} → {round(s,2)}%")
 
-    # FINAL RESULT
     st.subheader("🔍 Final Result")
     st.success(f"🩺 {best_disease}")
     st.write("Confidence:", round(confidence,2), "%")
@@ -293,7 +298,8 @@ if st.button("Predict"):
 
     # WHY
     st.subheader("🤖 Why this disease?")
-    st.write("Matched symptoms:", list(set(selected_symptoms) & set(disease_rules[best_disease])))
+    matched = list(set(selected_symptoms) & set(disease_rules[best_disease]))
+    st.write("Matched symptoms:", matched)
 
     # ADVICE
     st.subheader("💊 Advice")
