@@ -1,90 +1,58 @@
 import streamlit as st
-import pandas as pd
-import os
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
+st.set_page_config(page_title="Smart Tamil Medical Assistant", layout="wide")
 
 st.title("🧠 Smart Tamil Medical Assistant")
 
 # =========================
-# LOAD DATASET
+# ALL POSSIBLE SYMPTOMS
 # =========================
-file_path = "dataset.csv"
-
-if not os.path.exists(file_path):
-    st.error("dataset.csv not found")
-    st.stop()
-
-df = pd.read_csv(file_path, sep='\t')
-df.columns = df.columns.str.strip()
-
-df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
+all_symptoms = [
+    "chest pain","shortness of breath","fatigue","abdominal pain","vomiting",
+    "nausea","headache","nasal congestion","facial pain","runny nose","sneezing",
+    "cough","wheezing","weight loss","frequent urination","diarrhea","insomnia",
+    "anxiety","dizziness","fever","joint pain","swelling","rash","itching",
+    "breathing difficulty","light sensitivity"
+]
 
 # =========================
-# TRAIN MODEL
-# =========================
-vectorizer = TfidfVectorizer()
-X = vectorizer.fit_transform(df['Symptoms'])
-y = df['Disease']
-
-model = LogisticRegression(max_iter=1000)
-model.fit(X, y)
-
-# =========================
-# ALL SYMPTOMS (AUTO)
-# =========================
-all_symptoms = sorted(set(
-    s for row in df['Symptoms'] for s in row.split(', ')
-))
-
-# =========================
-# INPUT
-# =========================
-selected_symptoms = st.multiselect("🩺 Select Symptoms", all_symptoms)
-
-age = st.number_input("Age", 1, 100)
-days = st.number_input("How many days?", 0)
-fever = st.selectbox("Fever?", ["no", "yes"])
-
-# =========================
-# DISEASE RULES (30)
+# DISEASE RULES (ALL 30)
 # =========================
 disease_rules = {
-    "Heart Disease": ["chest pain", "shortness of breath", "fatigue", "dizziness"],
-    "Gastritis": ["abdominal pain", "vomiting", "nausea", "bloating"],
-    "Sinusitis": ["headache", "nasal congestion", "facial pain", "pressure around eyes"],
-    "Common Cold": ["runny nose", "sneezing", "cough", "sore throat"],
-    "Asthma": ["shortness of breath", "wheezing", "cough", "chest tightness"],
-    "Diabetes": ["fatigue", "weight loss", "frequent urination", "increased thirst"],
-    "Food Poisoning": ["vomiting", "diarrhea", "abdominal pain", "nausea"],
-    "Depression": ["fatigue", "insomnia", "anxiety", "loss of interest"],
-    "Hypertension": ["headache", "dizziness", "chest pain", "blurred vision"],
-    "Migraine": ["headache", "nausea", "light sensitivity", "vomiting"],
-    "Tuberculosis": ["cough", "weight loss", "fever", "night sweats"],
-    "Pneumonia": ["fever", "cough", "chest pain", "breathing difficulty"],
-    "Arthritis": ["joint pain", "swelling", "stiffness", "reduced movement"],
-    "Dermatitis": ["rash", "itching", "redness", "dry skin"],
-    "COVID-19": ["fever", "cough", "breathing difficulty", "loss of taste"],
-    "Allergy": ["sneezing", "rash", "runny nose", "itchy eyes"],
-    "Thyroid Disorder": ["weight gain", "fatigue", "hair loss", "irregular periods"],
-    "Stroke": ["weakness on one side", "speech difficulty", "dizziness", "vision problems"],
-    "Bronchitis": ["cough", "mucus", "fatigue", "shortness of breath"],
-    "Obesity": ["weight gain", "fatigue", "joint pain", "breathlessness"],
-    "Dementia": ["memory loss", "confusion", "difficulty speaking", "disorientation"],
-    "Parkinson's": ["tremor", "slow movement", "stiffness", "balance problems"],
-    "Liver Disease": ["jaundice", "abdominal pain", "fatigue", "swelling"],
-    "Epilepsy": ["seizures", "confusion", "loss of consciousness"],
-    "IBS": ["abdominal pain", "bloating", "diarrhea", "constipation"],
-    "Anemia": ["fatigue", "pale skin", "dizziness", "shortness of breath"],
-    "Chronic Kidney Disease": ["fatigue", "swelling", "urination changes", "nausea"],
-    "Ulcer": ["abdominal pain", "burning sensation", "nausea", "bloating"],
-    "Anxiety": ["nervousness", "restlessness", "rapid heartbeat", "sweating"],
-    "Influenza": ["fever", "body pain", "fatigue", "cough"]
+    "Heart Disease": ["chest pain", "shortness of breath", "fatigue"],
+    "Gastritis": ["abdominal pain", "vomiting", "nausea"],
+    "Sinusitis": ["headache", "nasal congestion", "facial pain"],
+    "Common Cold": ["runny nose", "sneezing", "cough"],
+    "Asthma": ["shortness of breath", "wheezing", "cough"],
+    "Diabetes": ["fatigue", "weight loss", "frequent urination"],
+    "Food Poisoning": ["vomiting", "diarrhea", "abdominal pain"],
+    "Depression": ["fatigue", "insomnia", "anxiety"],
+    "Hypertension": ["headache", "dizziness", "chest pain"],
+    "Migraine": ["headache", "nausea", "light sensitivity"],
+    "Tuberculosis": ["cough", "weight loss", "fever"],
+    "Pneumonia": ["fever", "cough", "chest pain"],
+    "Arthritis": ["joint pain", "swelling"],
+    "Dermatitis": ["rash", "itching"],
+    "COVID-19": ["fever", "cough", "breathing difficulty"],
+    "Allergy": ["sneezing", "rash", "runny nose"],
+    "Bronchitis": ["cough", "fatigue", "breathing difficulty"],
+    "Stroke": ["dizziness", "headache"],
+    "Thyroid Disorder": ["fatigue", "weight loss"],
+    "Anemia": ["fatigue", "dizziness"],
+    "Obesity": ["fatigue"],
+    "Parkinson's": ["fatigue"],
+    "Epilepsy": ["dizziness"],
+    "IBS": ["abdominal pain", "diarrhea"],
+    "Liver Disease": ["abdominal pain", "fatigue"],
+    "Anxiety": ["anxiety", "insomnia"],
+    "Chronic Kidney Disease": ["fatigue"],
+    "Ulcer": ["abdominal pain"],
+    "Influenza": ["fever", "cough"],
+    "Sinus Infection": ["headache", "nasal congestion"]
 }
 
 # =========================
-# DISEASE INFO (fallback safe)
+# DISEASE INFO (SAFE)
 # =========================
 disease_info = {
     "Allergy": {
@@ -217,107 +185,100 @@ disease_info = {
 }
 
 # =========================
-# FUNCTIONS
+# UI INPUTS
 # =========================
-def age_filter(disease, age):
-    if disease in ["Dementia", "Parkinson's"] and age < 50:
-        return 0.3
-    if disease in ["Common Cold", "Allergy"] and age < 40:
-        return 1.2
-    return 1
+st.subheader("🩺 Select Symptoms")
+selected_symptoms = st.multiselect("Choose symptoms", all_symptoms)
 
-def rule_score(user_symptoms, disease):
-    if disease not in disease_rules:
-        return 0
-    rule_symptoms = disease_rules[disease]
-    return len(set(user_symptoms) & set(rule_symptoms)) / len(rule_symptoms)
+st.subheader("📋 Condition Details")
+age = st.number_input("Age", 1, 100)
+days = st.number_input("How many days?", 0, 30)
+
+fever_level = st.selectbox("Fever level?", ["No fever", "Mild", "High"])
+pain = st.selectbox("Pain level?", ["Low", "Medium", "High"])
+progress = st.selectbox("Condition?", ["Same", "Better", "Worse"])
+
+st.subheader("🧾 Medical History")
+existing = st.multiselect("Existing diseases?", ["Diabetes", "BP", "Asthma"])
 
 # =========================
-# PREDICT
+# PREDICTION
 # =========================
 if st.button("Predict"):
 
-    if not selected_symptoms:
-        st.warning("Please select symptoms")
-        st.stop()
-
     st.write("🔧 Selected Symptoms:", selected_symptoms)
 
-    input_text = ", ".join(selected_symptoms)
+    scores = {}
 
-    X_input = vectorizer.transform([input_text])
-    probs = model.predict_proba(X_input)[0]
+    for disease, symptoms in disease_rules.items():
+        match_count = len(set(selected_symptoms) & set(symptoms))
+        base_score = match_count / len(symptoms)
 
-    pred_df = pd.DataFrame({
-        "Disease": model.classes_,
-        "ML": probs
-    })
+        score = base_score * 100
+
+        # AGE BOOST
+        if age > 50 and disease == "Heart Disease":
+            score += 10
+
+        # FEVER BOOST
+        if fever_level == "High" and "fever" in symptoms:
+            score += 10
+
+        # PAIN BOOST
+        if pain == "High":
+            score += 5
+
+        # WORSE CONDITION BOOST
+        if progress == "Worse":
+            score += 5
+
+        # EXISTING DISEASE BOOST
+        if "Diabetes" in existing and disease == "Diabetes":
+            score += 10
+
+        scores[disease] = min(score, 100)
+
+    # SORT
+    sorted_diseases = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    top3 = sorted_diseases[:3]
+
+    best_disease, confidence = top3[0]
 
     # =========================
-    # HYBRID SCORING
+    # EMERGENCY CHECK 🚨
     # =========================
-    final_scores = []
-
-    for i in pred_df.index:
-        disease = pred_df.loc[i, "Disease"]
-
-        ml = pred_df.loc[i, "ML"]
-        rule = rule_score(selected_symptoms, disease)
-
-        score = (0.7 * ml) + (0.3 * rule)
-
-        score *= age_filter(disease, age)
-
-        if fever == "yes":
-            score += 0.02
-        if days > 3:
-            score += 0.03
-
-        final_scores.append(score)
-
-    pred_df["Final"] = final_scores
-
-    # normalize
-    pred_df["Confidence"] = pred_df["Final"] / pred_df["Final"].max() * 100
+    if "chest pain" in selected_symptoms or "breathing difficulty" in selected_symptoms:
+        st.error("🚨 Please consult doctor immediately")
 
     # =========================
     # TOP 3
     # =========================
-    top3 = pred_df.sort_values(by="Confidence", ascending=False).head(3)
-
     st.subheader("🔝 Top 3 Predictions")
-    for _, row in top3.iterrows():
-        st.write(f"{row['Disease']} → {round(row['Confidence'],2)}%")
+    for d, s in top3:
+        st.write(f"{d} → {round(s,2)}%")
 
     # =========================
     # FINAL RESULT
     # =========================
-    best = top3.iloc[0]
-    disease = best["Disease"]
-    confidence = round(best["Confidence"], 2)
-
-    if confidence < 40:
-        severity = "Mild"
-        color = "green"
-    elif confidence < 70:
-        severity = "Moderate"
-        color = "orange"
-    else:
-        severity = "Severe"
-        color = "red"
-
     st.subheader("🔍 Final Result")
-    st.markdown(f"## 🩺 {disease}")
-    st.progress(int(confidence))
-    st.write(f"Confidence: {confidence}%")
-
-    st.markdown(f"### Severity: <span style='color:{color}'>{severity}</span>", unsafe_allow_html=True)
+    st.success(f"🩺 {best_disease}")
+    st.write("Confidence:", round(confidence,2), "%")
 
     # =========================
-    # WHY
+    # SEVERITY
+    # =========================
+    if confidence < 40:
+        st.markdown("### 🟢 Mild")
+    elif confidence < 70:
+        st.markdown("### 🟠 Moderate")
+    else:
+        st.markdown("### 🔴 Severe")
+
+    # =========================
+    # WHY THIS DISEASE
     # =========================
     st.subheader("🤖 Why this disease?")
-    matched = list(set(selected_symptoms) & set(disease_rules.get(disease, [])))
+    matched = list(set(selected_symptoms) & set(disease_rules[best_disease]))
     st.write("Matched symptoms:", matched)
 
     # =========================
@@ -325,13 +286,20 @@ if st.button("Predict"):
     # =========================
     st.subheader("💊 Advice")
 
-    info = disease_info.get(disease)
+    info = disease_info.get(best_disease, None)
 
     if info:
         for tip in info["advice"]:
             st.write("•", tip)
-        st.subheader("🧠 தமிழ் விளக்கம்")
+    else:
+        st.write("• Please consult doctor")
+
+    # =========================
+    # TAMIL
+    # =========================
+    st.subheader("🧠 தமிழ் விளக்கம்")
+
+    if info:
         st.write(info["tamil"])
     else:
-        st.write("• Consult doctor")
         st.write("மருத்துவரை அணுகவும்.")
