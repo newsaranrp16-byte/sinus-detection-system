@@ -25,7 +25,7 @@ df.columns = df.columns.str.strip()
 # PREPROCESS
 # =========================
 df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
-df['Symptoms_List'] = df['Symptoms'].apply(lambda x: x.split(', '))
+df['Symptoms_List'] = df['Symptoms'].apply(lambda x: [i.strip() for i in x.split(',')])
 
 # =========================
 # AUTO SYMPTOM CORRECTION
@@ -46,13 +46,15 @@ symptom_map = {
 def correct_symptoms(user_input):
     corrected = []
     words = user_input.lower().split(',')
+
     for w in words:
         w = w.strip()
         corrected.append(symptom_map.get(w, w))
+
     return corrected
 
 # =========================
-# YOUR DISEASE INFO (PASTE FULL 30)
+# DISEASE INFO (use your full dictionary here)
 # =========================
 disease_info = {
 
@@ -74,6 +76,12 @@ disease_info = {
         "tamil": "இன்ஃப்ளூயன்சா (காய்ச்சல்) வந்தால் அதிக ஓய்வு எடுத்து, சூடான நீர் மற்றும் சத்தான உணவுகளை உட்கொள்ள வேண்டும். தண்ணீர் அதிகமாக குடித்து உடலை நீர்ச்சத்து குறையாமல் பாதுகாத்துக்கொள்ளுங்கள். இருமல், காய்ச்சல் அதிகமாக இருந்தால் மருத்துவரை அணுகி மருந்துகளை சரியாக எடுத்துக்கொள்ள வேண்டும்."
     },
 
+    "Common Cold": {
+        "advice": ["Take rest", "Drink warm fluids"],
+        "english": "Common cold is usually mild. Rest well and stay hydrated.",
+        "tamil": "சாதாரண சளி. ஓய்வு எடுத்து வெந்நீர் குடிக்கவும்."
+    },
+    
     "Heart Disease": {
         "advice": ["Avoid oily food", "Exercise regularly"],
         "english": "To manage or prevent heart disease, it is important to follow a healthy lifestyle. Avoid foods that are high in oil, fat, and cholesterol. Regular exercise helps improve heart function and overall fitness. It is also essential to monitor blood pressure and sugar levels regularly. If symptoms such as chest pain, breathlessness, or fatigue occur, immediate medical consultation is necessary.",
@@ -104,45 +112,35 @@ if st.button("Predict"):
         st.warning("Please enter symptoms")
         st.stop()
 
-    # Apply correction
     user_symptoms = correct_symptoms(symptoms)
+
     st.write("🔧 Corrected Symptoms:", user_symptoms)
 
     # =========================
-    # DIRECT DISEASE DETECTION
-    # =========================
-    disease_names = [d.lower() for d in df['Disease'].unique()]
-    user_text = symptoms.lower()
-
-    direct_match = None
-    for d in disease_names:
-        if d in user_text:
-            direct_match = d
-            break
-
-    # =========================
-    # MATCHING
+    # IMPROVED MATCHING
     # =========================
     def match(row):
-        return len(set(row) & set(user_symptoms)) / len(row)
+        common = set(row) & set(user_symptoms)
+        return len(common)
 
-    df['Match'] = df['Symptoms_List'].apply(match)
-    top = df.sort_values(by='Match', ascending=False).head(5)
+    df['Match_Count'] = df['Symptoms_List'].apply(match)
+
+    # Normalize score
+    df['Match_Percentage'] = df['Match_Count'] / df['Symptoms_List'].apply(len)
+
+    # Sort
+    top = df.sort_values(by='Match_Count', ascending=False).head(5)
 
     # =========================
-    # FINAL DECISION
+    # HANDLE ZERO MATCH
     # =========================
-    if direct_match:
-        disease = direct_match.title()
-        confidence = 80
+    if top['Match_Count'].max() == 0:
+        disease = "General Checkup Recommended"
+        confidence = 35
     else:
-        if top['Match'].max() == 0:
-            disease = "General Checkup Recommended"
-            confidence = 30
-        else:
-            best = top.iloc[0]
-            disease = best['Disease']
-            confidence = round(best['Match'] * 100, 2)
+        best = top.iloc[0]
+        disease = best['Disease']
+        confidence = round(best['Match_Percentage'] * 100, 2)
 
     # =========================
     # BOOST CONFIDENCE
@@ -157,7 +155,7 @@ if st.button("Predict"):
     confidence = min(confidence, 100)
 
     # =========================
-    # SEVERITY
+    # SEVERITY COLOR
     # =========================
     if confidence < 40:
         severity = "Mild"
@@ -175,33 +173,25 @@ if st.button("Predict"):
     st.subheader("🔍 Final Result")
     st.write("**Predicted Disease:**", disease)
     st.write("**Confidence:**", confidence, "%")
-
     st.markdown(f"### Severity: <span style='color:{color}'>{severity}</span>", unsafe_allow_html=True)
 
     if severity == "Severe":
         st.error("⚠️ High risk - consult doctor")
 
     # =========================
-    # 📊 BAR CHART
+    # BAR CHART (FIXED)
     # =========================
     st.subheader("📊 Disease Probability Distribution")
 
-    if direct_match:
-        labels = [disease, "Others"]
-        values = [confidence, 100 - confidence]
-    else:
-        labels = top['Disease']
-        values = top['Match'] * 100
+    chart_data = top[top['Match_Count'] > 0]
 
-    if sum(values) == 0:
+    if chart_data.empty:
         st.warning("No matching data to display chart")
     else:
         fig, ax = plt.subplots()
-        ax.bar(labels, values)
-        ax.set_ylabel("Probability (%)")
-        ax.set_title("Disease Prediction Chart")
-        plt.xticks(rotation=30)
-
+        ax.bar(chart_data['Disease'], chart_data['Match_Count'])
+        plt.xticks(rotation=45)
+        ax.set_title("Top Matching Diseases")
         st.pyplot(fig)
 
     # =========================
