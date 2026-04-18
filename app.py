@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
 import os
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.naive_bayes import MultinomialNB
 
-st.title("🧠 Tamil Medical Assistant - Smart Disease Predictor")
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+
+st.title("🧠 Tamil Medical Assistant - AI Disease Prediction")
 
 # =========================
 # LOAD DATASET
@@ -15,11 +16,7 @@ if not os.path.exists(file_path):
     st.error("❌ dataset.csv NOT FOUND")
     st.stop()
 
-try:
-    df = pd.read_csv(file_path, sep='\t')
-except:
-    df = pd.read_csv(file_path, sep=',', encoding='latin1')
-
+df = pd.read_csv(file_path)
 df.columns = df.columns.str.strip()
 
 # =========================
@@ -28,29 +25,43 @@ df.columns = df.columns.str.strip()
 df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
 
 # =========================
-# EXTRACT SYMPTOMS LIST
+# TRAIN AI MODEL (TF-IDF)
+# =========================
+vectorizer = TfidfVectorizer()
+X = vectorizer.fit_transform(df['Symptoms'])
+y = df['Disease']
+
+model = LogisticRegression(max_iter=1000)
+model.fit(X, y)
+
+# =========================
+# GET ALL UNIQUE SYMPTOMS
 # =========================
 all_symptoms = set()
-
 for s in df['Symptoms']:
-    parts = s.split(', ')
-    for p in parts:
-        all_symptoms.add(p.strip())
+    for i in s.split(","):
+        all_symptoms.add(i.strip())
 
 all_symptoms = sorted(list(all_symptoms))
 
 # =========================
-# TRAIN ML MODEL
+# INPUT SECTION
 # =========================
-vectorizer = CountVectorizer()
-X = vectorizer.fit_transform(df['Symptoms'])
-y = df['Disease']
+st.subheader("🩺 Select Symptoms")
 
-model = MultinomialNB()
-model.fit(X, y)
+selected_symptoms = st.multiselect(
+    "Search & select symptoms:",
+    options=all_symptoms
+)
+
+age = st.number_input("Enter Age", min_value=1, max_value=100)
+
+days = st.number_input("How many days?", min_value=0)
+cold_food = st.selectbox("Cold items?", ["no", "yes"])
+fever = st.selectbox("Fever?", ["no", "yes"])
 
 # =========================
-# DISEASE INFO (ADD ALL 30)
+# DISEASE INFO (SHORT SAMPLE - KEEP YOUR FULL ONE)
 # =========================
 disease_info = {
     "Allergy": {
@@ -183,68 +194,48 @@ disease_info = {
 }
 
 # =========================
-# 🔍 SEARCHABLE INPUT
-# =========================
-search_text = st.text_input("🔍 Search Symptoms (like Google):")
-
-if search_text:
-    suggestions = [s for s in all_symptoms if search_text.lower() in s]
-else:
-    suggestions = all_symptoms
-
-# =========================
-# MULTISELECT (SMART)
-# =========================
-selected_symptoms = st.multiselect(
-    "Select Symptoms:",
-    options=suggestions
-)
-
-# =========================
-# OTHER INPUTS
-# =========================
-days = st.number_input("How many days?", min_value=0)
-cold_food = st.selectbox("Cold items?", ["no", "yes"])
-fever = st.selectbox("Fever?", ["no", "yes"])
-
-# =========================
-# PREDICT
+# PREDICTION
 # =========================
 if st.button("Predict"):
 
-    if len(selected_symptoms) == 0:
+    if not selected_symptoms:
         st.warning("Please select symptoms")
         st.stop()
 
-    input_text = " ".join(selected_symptoms)
-    st.write("🔧 Selected Symptoms:", input_text)
+    user_text = ", ".join(selected_symptoms)
 
-    # ML Prediction
-    X_input = vectorizer.transform([input_text])
-    prediction = model.predict(X_input)[0]
-    prob = model.predict_proba(X_input).max()
+    # Convert to vector
+    user_vec = vectorizer.transform([user_text])
 
-    disease = prediction
+    probs = model.predict_proba(user_vec)[0]
+    classes = model.classes_
 
-    # Normalize name
-    for key in disease_info.keys():
-        if key.lower() == disease.lower():
-            disease = key
-            break
+    # Top 3 predictions
+    top3_idx = probs.argsort()[-3:][::-1]
 
-    confidence = round(prob * 100, 2)
+    st.subheader("🔝 Top 3 Predictions")
 
-    # BOOST
+    for i in top3_idx:
+        st.write(f"**{classes[i]}** → {round(probs[i]*100,2)}%")
+
+    # Best prediction
+    best_idx = top3_idx[0]
+    disease = classes[best_idx]
+    confidence = round(probs[best_idx] * 100, 2)
+
+    # =========================
+    # BOOST LOGIC
+    # =========================
     if days > 3:
-        confidence += 10
-    if cold_food == "yes":
         confidence += 5
     if fever == "yes":
-        confidence += 10
+        confidence += 5
 
     confidence = min(confidence, 100)
 
+    # =========================
     # SEVERITY
+    # =========================
     if confidence < 40:
         severity = "Mild"
         color = "green"
@@ -259,27 +250,53 @@ if st.button("Predict"):
     # RESULT
     # =========================
     st.subheader("🔍 Final Result")
-    st.write("**Predicted Disease:**", disease)
-    st.write("**Confidence:**", confidence, "%")
-    st.markdown(f"### Severity: <span style='color:{color}'>{severity}</span>", unsafe_allow_html=True)
+
+    st.markdown(f"## 🩺 **{disease}**")
+    st.markdown(f"### Confidence: {confidence}%")
+
+    # Confidence bar
+    st.progress(int(confidence))
+
+    st.markdown(
+        f"### Severity: <span style='color:{color}'>{severity}</span>",
+        unsafe_allow_html=True
+    )
 
     if severity == "Severe":
         st.error("⚠️ High risk - consult doctor")
 
     # =========================
-    # ADVICE + TAMIL
+    # WHY EXPLANATION
     # =========================
+    st.subheader("🤖 Why this disease?")
+
+    disease_rows = df[df['Disease'] == disease]
+    sample_symptoms = disease_rows.iloc[0]['Symptoms'].split(", ")
+
+    matched = set(sample_symptoms) & set(selected_symptoms)
+
+    st.write("Matched symptoms:", list(matched))
+
+    # =========================
+    # ADVICE
+    # =========================
+    st.subheader("💊 Advice")
+
     info = disease_info.get(disease)
 
-    st.subheader("💊 Advice")
-    if info and "advice" in info:
+    if info:
         for tip in info["advice"]:
             st.write("•", tip)
     else:
-        st.write("• Please consult doctor")
+        st.write("• Consult doctor")
 
+    # =========================
+    # TAMIL
+    # =========================
     st.subheader("🧠 தமிழ் விளக்கம்")
-    if info and "tamil" in info:
+
+    if info:
         st.write(info["tamil"])
     else:
         st.write("மருத்துவரை அணுகவும்.")
+
