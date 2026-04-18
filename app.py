@@ -28,6 +28,18 @@ df.columns = df.columns.str.strip()
 df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
 
 # =========================
+# EXTRACT SYMPTOMS LIST
+# =========================
+all_symptoms = set()
+
+for s in df['Symptoms']:
+    parts = s.split(', ')
+    for p in parts:
+        all_symptoms.add(p.strip())
+
+all_symptoms = sorted(list(all_symptoms))
+
+# =========================
 # TRAIN ML MODEL
 # =========================
 vectorizer = CountVectorizer()
@@ -36,26 +48,6 @@ y = df['Disease']
 
 model = MultinomialNB()
 model.fit(X, y)
-
-# =========================
-# AUTO SYMPTOM CORRECTION
-# =========================
-symptom_map = {
-    "stomach upset": "abdominal pain",
-    "stomach pain": "abdominal pain",
-    "cold": "runny nose",
-    "blocked nose": "nasal congestion",
-    "head pain": "headache",
-    "body pain": "muscle pain",
-    "tired": "fatigue",
-    "throwing up": "vomiting"
-}
-
-def correct_text(text):
-    text = text.lower()
-    for k, v in symptom_map.items():
-        text = text.replace(k, v)
-    return text
 
 # =========================
 # DISEASE INFO (ADD ALL 30)
@@ -191,9 +183,26 @@ disease_info = {
 }
 
 # =========================
-# INPUT
+# 🔍 SEARCHABLE INPUT
 # =========================
-symptoms = st.text_input("Enter symptoms:")
+search_text = st.text_input("🔍 Search Symptoms (like Google):")
+
+if search_text:
+    suggestions = [s for s in all_symptoms if search_text.lower() in s]
+else:
+    suggestions = all_symptoms
+
+# =========================
+# MULTISELECT (SMART)
+# =========================
+selected_symptoms = st.multiselect(
+    "Select Symptoms:",
+    options=suggestions
+)
+
+# =========================
+# OTHER INPUTS
+# =========================
 days = st.number_input("How many days?", min_value=0)
 cold_food = st.selectbox("Cold items?", ["no", "yes"])
 fever = st.selectbox("Fever?", ["no", "yes"])
@@ -203,21 +212,21 @@ fever = st.selectbox("Fever?", ["no", "yes"])
 # =========================
 if st.button("Predict"):
 
-    if symptoms.strip() == "":
-        st.warning("Please enter symptoms")
+    if len(selected_symptoms) == 0:
+        st.warning("Please select symptoms")
         st.stop()
 
-    corrected = correct_text(symptoms)
-    st.write("🔧 Corrected:", corrected)
+    input_text = " ".join(selected_symptoms)
+    st.write("🔧 Selected Symptoms:", input_text)
 
     # ML Prediction
-    X_input = vectorizer.transform([corrected])
+    X_input = vectorizer.transform([input_text])
     prediction = model.predict(X_input)[0]
     prob = model.predict_proba(X_input).max()
 
     disease = prediction
 
-    # Normalize disease name
+    # Normalize name
     for key in disease_info.keys():
         if key.lower() == disease.lower():
             disease = key
@@ -246,7 +255,9 @@ if st.button("Predict"):
         severity = "Severe"
         color = "red"
 
+    # =========================
     # RESULT
+    # =========================
     st.subheader("🔍 Final Result")
     st.write("**Predicted Disease:**", disease)
     st.write("**Confidence:**", confidence, "%")
@@ -256,7 +267,7 @@ if st.button("Predict"):
         st.error("⚠️ High risk - consult doctor")
 
     # =========================
-    # ADVICE + TAMIL ONLY (SAFE)
+    # ADVICE + TAMIL
     # =========================
     info = disease_info.get(disease)
 
