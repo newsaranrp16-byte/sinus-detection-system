@@ -275,7 +275,7 @@ if st.button("Predict"):
 
     # 🚨 EMERGENCY ALERT
     if "chest pain" in selected_symptoms or "breathing difficulty" in selected_symptoms:
-        st.error("🚨 Please consult doctor immediately")
+        st.error("🚨")
 
     # =========================
     # OUTPUT
