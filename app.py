@@ -3,6 +3,9 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+
 st.title("🧠 Tamil Medical Assistant - Sinus Detection System")
 
 # =========================
@@ -28,6 +31,16 @@ df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
 df['Symptoms_List'] = df['Symptoms'].apply(lambda x: [i.strip() for i in x.split(',')])
 
 # =========================
+# 🔥 AI MODEL TRAINING
+# =========================
+vectorizer = CountVectorizer()
+X = vectorizer.fit_transform(df['Symptoms'])
+y = df['Disease']
+
+model = MultinomialNB()
+model.fit(X, y)
+
+# =========================
 # AUTO SYMPTOM CORRECTION
 # =========================
 symptom_map = {
@@ -44,17 +57,11 @@ symptom_map = {
 }
 
 def correct_symptoms(user_input):
-    corrected = []
     words = user_input.lower().split(',')
-
-    for w in words:
-        w = w.strip()
-        corrected.append(symptom_map.get(w, w))
-
-    return corrected
+    return [symptom_map.get(w.strip(), w.strip()) for w in words]
 
 # =========================
-# DISEASE INFO (use your full dictionary here)
+# YOUR DISEASE INFO (PASTE FULL 30 HERE)
 # =========================
 disease_info = {
 
@@ -81,7 +88,7 @@ disease_info = {
         "english": "Common cold is usually mild. Rest well and stay hydrated.",
         "tamil": "சாதாரண சளி. ஓய்வு எடுத்து வெந்நீர் குடிக்கவும்."
     },
-    
+
     "Heart Disease": {
         "advice": ["Avoid oily food", "Exercise regularly"],
         "english": "To manage or prevent heart disease, it is important to follow a healthy lifestyle. Avoid foods that are high in oil, fat, and cholesterol. Regular exercise helps improve heart function and overall fitness. It is also essential to monitor blood pressure and sugar levels regularly. If symptoms such as chest pain, breathlessness, or fatigue occur, immediate medical consultation is necessary.",
@@ -116,35 +123,31 @@ if st.button("Predict"):
 
     st.write("🔧 Corrected Symptoms:", user_symptoms)
 
-    # =========================
-    # IMPROVED MATCHING
-    # =========================
-    def match(row):
-        common = set(row) & set(user_symptoms)
-        return len(common)
-
-    df['Match_Count'] = df['Symptoms_List'].apply(match)
-
-    # Normalize score
-    df['Match_Percentage'] = df['Match_Count'] / df['Symptoms_List'].apply(len)
-
-    # Sort
-    top = df.sort_values(by='Match_Count', ascending=False).head(5)
+    # OPTIONAL WARNING
+    if len(user_symptoms) < 2:
+        st.warning("⚠️ Please enter at least 2 symptoms for better accuracy")
 
     # =========================
-    # HANDLE ZERO MATCH
+    # 🔥 AI PREDICTION
     # =========================
-    if top['Match_Count'].max() == 0:
-        disease = "General Checkup Recommended"
-        confidence = 35
-    else:
-        best = top.iloc[0]
-        disease = best['Disease']
-        confidence = round(best['Match_Percentage'] * 100, 2)
+    input_text = " ".join(user_symptoms)
+    input_vector = vectorizer.transform([input_text])
+
+    prediction = model.predict(input_vector)[0]
+    probabilities = model.predict_proba(input_vector)[0]
+
+    # Get top 5 diseases
+    top_indices = probabilities.argsort()[-5:][::-1]
+    top_diseases = model.classes_[top_indices]
+    top_probs = probabilities[top_indices]
 
     # =========================
-    # BOOST CONFIDENCE
+    # CONFIDENCE
     # =========================
+    confidence = round(top_probs[0] * 100, 2)
+    disease = prediction
+
+    # BOOST
     if days > 3:
         confidence += 10
     if cold_food == "yes":
@@ -155,7 +158,7 @@ if st.button("Predict"):
     confidence = min(confidence, 100)
 
     # =========================
-    # SEVERITY COLOR
+    # SEVERITY
     # =========================
     if confidence < 40:
         severity = "Mild"
@@ -179,20 +182,16 @@ if st.button("Predict"):
         st.error("⚠️ High risk - consult doctor")
 
     # =========================
-    # BAR CHART (FIXED)
+    # BAR CHART (AI BASED)
     # =========================
     st.subheader("📊 Disease Probability Distribution")
 
-    chart_data = top[top['Match_Count'] > 0]
-
-    if chart_data.empty:
-        st.warning("No matching data to display chart")
-    else:
-        fig, ax = plt.subplots()
-        ax.bar(chart_data['Disease'], chart_data['Match_Count'])
-        plt.xticks(rotation=45)
-        ax.set_title("Top Matching Diseases")
-        st.pyplot(fig)
+    fig, ax = plt.subplots()
+    ax.bar(top_diseases, top_probs * 100)
+    plt.xticks(rotation=45)
+    ax.set_ylabel("Probability (%)")
+    ax.set_title("Top Predicted Diseases")
+    st.pyplot(fig)
 
     # =========================
     # ADVICE
