@@ -28,7 +28,7 @@ df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
 df['Symptoms_List'] = df['Symptoms'].apply(lambda x: x.split(', '))
 
 # =========================
-# 🔥 AUTO SYMPTOM CORRECTION
+# AUTO SYMPTOM CORRECTION
 # =========================
 symptom_map = {
     "stomach upset": "abdominal pain",
@@ -46,21 +46,17 @@ symptom_map = {
 def correct_symptoms(user_input):
     corrected = []
     words = user_input.lower().split(',')
-
     for w in words:
         w = w.strip()
-        if w in symptom_map:
-            corrected.append(symptom_map[w])
-        else:
-            corrected.append(w)
-
+        corrected.append(symptom_map.get(w, w))
     return corrected
 
 # =========================
-# 🔥 PASTE YOUR FULL DICTIONARY HERE
+# YOUR DISEASE INFO (PASTE FULL 30)
 # =========================
 disease_info = {
-      "Allergy": {
+
+    "Allergy": {
         "advice": ["Avoid allergens", "Take antihistamines", "Consult doctor"],
         "english": "If you have allergies, it is important to identify and avoid triggers such as dust, pollen, certain foods, or environmental factors. Keeping your surroundings clean and maintaining good hygiene can help reduce exposure. Washing hands frequently and following a healthy lifestyle will improve immunity. If symptoms like sneezing, itching, or breathing difficulty become severe, consult a doctor and take prescribed medications properly.",
         "tamil": "உங்களுக்கு அலர்ஜி இருந்தால், அதற்கு காரணமான தூசி, சில உணவுகள் அல்லது பூமருவுகள் போன்றவற்றை தவிர்க்க வேண்டும். உங்கள் சுற்றுப்புறத்தை சுத்தமாக வைத்துக் கொள்ளுங்கள், அடிக்கடி கைகளை கழுவுங்கள், மற்றும் ஆரோக்கியமான வாழ்க்கை முறையை பின்பற்றுங்கள். அறிகுறிகள் அதிகமாக இருந்தால் மருத்துவரை அணுகி மருந்துகளை சரியாக எடுத்துக்கொள்ளுங்கள்."
@@ -88,7 +84,7 @@ disease_info = {
         "advice": ["Steam inhalation", "Avoid cold items"],
         "english": "Sinusitis occurs when the nasal passages become inflamed, leading to symptoms like nasal blockage, headache, and facial pressure. Steam inhalation helps clear nasal congestion and improves breathing. Drinking warm fluids keeps the body hydrated and reduces discomfort. Avoid exposure to cold air, dust, and allergens. If symptoms persist for several days or worsen, consult a doctor for proper treatment.",
         "tamil": "சைனஸைட்டிஸ் (Sinusitis) இருந்தால் வெதுவெதுப்பான நீர் ஆவி பிடித்தல் மூக்கடைப்பை குறைக்க உதவும். அதிகமாக தண்ணீர் குடித்து உடலை நீர்ச்சத்துடன் வைத்துக்கொள்ளுங்கள். தூசி, குளிர் காற்று போன்றவற்றை தவிர்க்கவும். தலைவலி, மூக்கடைப்பு நீடித்தால் மருத்துவரை அணுகி சரியான சிகிச்சை பெறுவது அவசியம்."
-                 }
+    }
 }
 
 # =========================
@@ -108,10 +104,21 @@ if st.button("Predict"):
         st.warning("Please enter symptoms")
         st.stop()
 
-    # 🔥 APPLY CORRECTION
+    # Apply correction
     user_symptoms = correct_symptoms(symptoms)
-
     st.write("🔧 Corrected Symptoms:", user_symptoms)
+
+    # =========================
+    # DIRECT DISEASE DETECTION
+    # =========================
+    disease_names = [d.lower() for d in df['Disease'].unique()]
+    user_text = symptoms.lower()
+
+    direct_match = None
+    for d in disease_names:
+        if d in user_text:
+            direct_match = d
+            break
 
     # =========================
     # MATCHING
@@ -120,19 +127,22 @@ if st.button("Predict"):
         return len(set(row) & set(user_symptoms)) / len(row)
 
     df['Match'] = df['Symptoms_List'].apply(match)
-
     top = df.sort_values(by='Match', ascending=False).head(5)
 
     # =========================
-    # SMART DISEASE PICK
+    # FINAL DECISION
     # =========================
-    if top['Match'].max() == 0:
-        disease = "General Checkup Recommended"
-        confidence = 30
+    if direct_match:
+        disease = direct_match.title()
+        confidence = 80
     else:
-        best = top.iloc[0]
-        disease = best['Disease']
-        confidence = round(best['Match'] * 100, 2)
+        if top['Match'].max() == 0:
+            disease = "General Checkup Recommended"
+            confidence = 30
+        else:
+            best = top.iloc[0]
+            disease = best['Disease']
+            confidence = round(best['Match'] * 100, 2)
 
     # =========================
     # BOOST CONFIDENCE
@@ -147,7 +157,7 @@ if st.button("Predict"):
     confidence = min(confidence, 100)
 
     # =========================
-    # SEVERITY COLOR
+    # SEVERITY
     # =========================
     if confidence < 40:
         severity = "Mild"
@@ -172,19 +182,26 @@ if st.button("Predict"):
         st.error("⚠️ High risk - consult doctor")
 
     # =========================
-    # PIE CHART (FIXED)
+    # 📊 BAR CHART
     # =========================
     st.subheader("📊 Disease Probability Distribution")
 
-    labels = top['Disease']
-    values = top['Match']
+    if direct_match:
+        labels = [disease, "Others"]
+        values = [confidence, 100 - confidence]
+    else:
+        labels = top['Disease']
+        values = top['Match'] * 100
 
-    if values.sum() == 0:
+    if sum(values) == 0:
         st.warning("No matching data to display chart")
     else:
         fig, ax = plt.subplots()
-        ax.pie(values, labels=labels, autopct='%1.1f%%')
-        ax.set_title("Top Possible Diseases")
+        ax.bar(labels, values)
+        ax.set_ylabel("Probability (%)")
+        ax.set_title("Disease Prediction Chart")
+        plt.xticks(rotation=30)
+
         st.pyplot(fig)
 
     # =========================
@@ -217,4 +234,3 @@ if st.button("Predict"):
         st.write(disease_info[disease]["tamil"])
     else:
         st.write("மருத்துவரை அணுகவும்.")
-
