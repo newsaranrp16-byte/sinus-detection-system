@@ -58,7 +58,7 @@ def correct_text(text):
     return text
 
 # =========================
-# YOUR DICTIONARY (ADD FULL 30 HERE)
+# DISEASE INFO (ADD ALL 30)
 # =========================
 disease_info = {
     "Allergy": {
@@ -207,13 +207,10 @@ if st.button("Predict"):
         st.warning("Please enter symptoms")
         st.stop()
 
-    # 🔥 FIX TEXT
     corrected = correct_text(symptoms)
     st.write("🔧 Corrected:", corrected)
 
-    # =========================
-    # ML PREDICTION
-    # =========================
+    # ML Prediction
     X_input = vectorizer.transform([corrected])
     prediction = model.predict(X_input)[0]
     prob = model.predict_proba(X_input).max()
@@ -228,9 +225,7 @@ if st.button("Predict"):
 
     confidence = round(prob * 100, 2)
 
-    # =========================
     # BOOST
-    # =========================
     if days > 3:
         confidence += 10
     if cold_food == "yes":
@@ -240,9 +235,7 @@ if st.button("Predict"):
 
     confidence = min(confidence, 100)
 
-    # =========================
     # SEVERITY
-    # =========================
     if confidence < 40:
         severity = "Mild"
         color = "green"
@@ -253,9 +246,7 @@ if st.button("Predict"):
         severity = "Severe"
         color = "red"
 
-    # =========================
     # RESULT
-    # =========================
     st.subheader("🔍 Final Result")
     st.write("**Predicted Disease:**", disease)
     st.write("**Confidence:**", confidence, "%")
@@ -265,25 +256,19 @@ if st.button("Predict"):
         st.error("⚠️ High risk - consult doctor")
 
     # =========================
-    # ADVICE + EXPLANATION
+    # ADVICE + TAMIL ONLY (SAFE)
     # =========================
     info = disease_info.get(disease)
 
     st.subheader("💊 Advice")
-    if info:
+    if info and "advice" in info:
         for tip in info["advice"]:
             st.write("•", tip)
     else:
         st.write("• Please consult doctor")
 
-    st.subheader("📘 English Explanation")
-    if info:
-        st.write(info["english"])
-    else:
-        st.write("General symptoms detected. Please consult doctor.")
-
     st.subheader("🧠 தமிழ் விளக்கம்")
-    if info:
+    if info and "tamil" in info:
         st.write(info["tamil"])
     else:
         st.write("மருத்துவரை அணுகவும்.")
