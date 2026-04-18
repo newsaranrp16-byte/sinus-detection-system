@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
 import os
-import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
 
-st.title("🧠 Tamil Medical Assistant - Sinus Detection System")
+st.title("🧠 Tamil Medical Assistant - Smart Disease Predictor")
 
 # =========================
 # LOAD DATASET
@@ -25,7 +26,16 @@ df.columns = df.columns.str.strip()
 # PREPROCESS
 # =========================
 df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
-df['Symptoms_List'] = df['Symptoms'].apply(lambda x: x.split(', '))
+
+# =========================
+# TRAIN ML MODEL
+# =========================
+vectorizer = CountVectorizer()
+X = vectorizer.fit_transform(df['Symptoms'])
+y = df['Disease']
+
+model = MultinomialNB()
+model.fit(X, y)
 
 # =========================
 # AUTO SYMPTOM CORRECTION
@@ -35,29 +45,21 @@ symptom_map = {
     "stomach pain": "abdominal pain",
     "cold": "runny nose",
     "blocked nose": "nasal congestion",
-    "nose block": "nasal congestion",
     "head pain": "headache",
     "body pain": "muscle pain",
     "tired": "fatigue",
-    "feeling weak": "fatigue",
     "throwing up": "vomiting"
 }
 
-def correct_symptoms(user_input):
-    user_input = user_input.lower()
+def correct_text(text):
+    text = text.lower()
+    for k, v in symptom_map.items():
+        text = text.replace(k, v)
+    return text
 
-    # split properly (FIXED)
-    words = user_input.replace(',', ' ').split()
-
-    corrected = []
-    for w in words:
-        if w in symptom_map:
-            corrected.append(symptom_map[w])
-        else:
-            corrected.append(w)
-
-    return list(set(corrected))
-
+# =========================
+# YOUR DICTIONARY (ADD FULL 30 HERE)
+# =========================
 disease_info = {
     "Allergy": {
         "advice": ["Avoid allergens", "Take antihistamines", "Consult doctor"],
@@ -186,11 +188,12 @@ disease_info = {
         "advice": ["Reduce salt", "Exercise"],
         "tamil": "உயர் இரத்த அழுத்தம் (Hypertension) உள்ளவர்கள் உப்பு அளவை குறைத்து, சீரான மற்றும் ஆரோக்கியமான உணவு முறையை பின்பற்ற வேண்டும். தினமும் உடற்பயிற்சி செய்து, மன அழுத்தத்தை கட்டுப்படுத்துவது முக்கியம். புகைபிடித்தல் மற்றும் மதுபானத்தை தவிர்க்கவும். ரத்த அழுத்தத்தை அடிக்கடி பரிசோதித்து, மருத்துவர் கூறிய மருந்துகளை நேரத்திற்கு எடுத்துக்கொள்ள வேண்டும்."
     },
-} 
+}
+
 # =========================
 # INPUT
 # =========================
-symptoms = st.text_input("Enter symptoms (comma separated):")
+symptoms = st.text_input("Enter symptoms:")
 days = st.number_input("How many days?", min_value=0)
 cold_food = st.selectbox("Cold items?", ["no", "yes"])
 fever = st.selectbox("Fever?", ["no", "yes"])
@@ -204,32 +207,26 @@ if st.button("Predict"):
         st.warning("Please enter symptoms")
         st.stop()
 
-    user_symptoms = correct_symptoms(symptoms)
-    st.write("🔧 Corrected Symptoms:", user_symptoms)
+    # 🔥 FIX TEXT
+    corrected = correct_text(symptoms)
+    st.write("🔧 Corrected:", corrected)
 
     # =========================
-    # MATCHING (FIXED)
+    # ML PREDICTION
     # =========================
-    def match(row):
-        common = set(row) & set(user_symptoms)
-        if len(common) == 0:
-            return 0
-        return len(common) / max(len(row), len(user_symptoms))
+    X_input = vectorizer.transform([corrected])
+    prediction = model.predict(X_input)[0]
+    prob = model.predict_proba(X_input).max()
 
-    df['Match'] = df['Symptoms_List'].apply(match)
+    disease = prediction
 
-    top5 = df.sort_values(by='Match', ascending=False).head(5)
+    # Normalize disease name
+    for key in disease_info.keys():
+        if key.lower() == disease.lower():
+            disease = key
+            break
 
-    # =========================
-    # PICK BEST
-    # =========================
-    if top5['Match'].max() == 0:
-        disease = "General Checkup"
-        confidence = 35
-    else:
-        best = top5.iloc[0]
-        disease = best['Disease'].strip().title()   # FIXED
-        confidence = round(best['Match'] * 100, 2)
+    confidence = round(prob * 100, 2)
 
     # =========================
     # BOOST
@@ -244,7 +241,7 @@ if st.button("Predict"):
     confidence = min(confidence, 100)
 
     # =========================
-    # SEVERITY COLOR
+    # SEVERITY
     # =========================
     if confidence < 40:
         severity = "Mild"
@@ -268,50 +265,25 @@ if st.button("Predict"):
         st.error("⚠️ High risk - consult doctor")
 
     # =========================
-    # BAR CHART (FIXED)
+    # ADVICE + EXPLANATION
     # =========================
-    st.subheader("📊 Disease Probability Distribution")
+    info = disease_info.get(disease)
 
-    labels = top5['Disease'].str.title()
-    values = (top5['Match'] * 100).round(2)
-
-    if values.sum() == 0:
-        st.warning("No sufficient data for visualization")
-    else:
-        fig, ax = plt.subplots()
-        ax.bar(labels, values)
-        ax.set_ylabel("Probability (%)")
-        ax.set_title("Top Predicted Diseases")
-        plt.xticks(rotation=30)
-        st.pyplot(fig)
-
-    # =========================
-    # ADVICE
-    # =========================
     st.subheader("💊 Advice")
-
-    if disease in disease_info:
-        for tip in disease_info[disease]["advice"]:
+    if info:
+        for tip in info["advice"]:
             st.write("•", tip)
     else:
         st.write("• Please consult doctor")
 
-    # =========================
-    # ENGLISH
-    # =========================
     st.subheader("📘 English Explanation")
-
-    if disease in disease_info:
-        st.write(disease_info[disease]["english"])
+    if info:
+        st.write(info["english"])
     else:
         st.write("General symptoms detected. Please consult doctor.")
 
-    # =========================
-    # TAMIL
-    # =========================
     st.subheader("🧠 தமிழ் விளக்கம்")
-
-    if disease in disease_info:
-        st.write(disease_info[disease]["tamil"])
+    if info:
+        st.write(info["tamil"])
     else:
         st.write("மருத்துவரை அணுகவும்.")
