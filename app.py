@@ -1,67 +1,62 @@
 import streamlit as st
-import pandas as pd
-import os
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
+st.set_page_config(page_title="Medical Assistant", layout="centered")
 
-st.title("🧠 Tamil Medical Assistant - AI Disease Prediction")
+st.title("🧠 Smart Tamil Medical Assistant")
 
 # =========================
-# LOAD DATASET
+# ALL DISEASE RULES
 # =========================
-file_path = "dataset.csv"
-
-if not os.path.exists(file_path):
-    st.error("❌ dataset.csv NOT FOUND")
-    st.stop()
-
-df = pd.read_csv(file_path)
-df.columns = df.columns.str.strip()
-
-# =========================
-# PREPROCESS
-# =========================
-df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
-
-# =========================
-# TRAIN AI MODEL (TF-IDF)
-# =========================
-vectorizer = TfidfVectorizer()
-X = vectorizer.fit_transform(df['Symptoms'])
-y = df['Disease']
-
-model = LogisticRegression(max_iter=1000)
-model.fit(X, y)
+disease_rules = {
+    "Heart Disease": ["chest pain", "shortness of breath", "fatigue"],
+    "Gastritis": ["abdominal pain", "vomiting", "nausea"],
+    "Sinusitis": ["headache", "nasal congestion", "facial pain"],
+    "Common Cold": ["runny nose", "sneezing", "cough"],
+    "Asthma": ["shortness of breath", "wheezing", "cough"],
+    "Diabetes": ["fatigue", "weight loss", "frequent urination"],
+    "Food Poisoning": ["vomiting", "diarrhea", "abdominal pain"],
+    "Depression": ["fatigue", "insomnia", "anxiety"],
+    "Hypertension": ["headache", "dizziness", "chest pain"],
+    "Migraine": ["headache", "nausea", "light sensitivity"],
+    "Tuberculosis": ["cough", "weight loss", "fever"],
+    "Pneumonia": ["fever", "cough", "chest pain"],
+    "Arthritis": ["joint pain", "swelling"],
+    "Dermatitis": ["rash", "itching"],
+    "COVID-19": ["fever", "cough", "breathing difficulty"],
+    "Allergy": ["sneezing", "rash", "runny nose"]
+}
 
 # =========================
-# GET ALL UNIQUE SYMPTOMS
+# PRIORITY WEIGHTS
 # =========================
-all_symptoms = set()
-for s in df['Symptoms']:
-    for i in s.split(","):
-        all_symptoms.add(i.strip())
-
-all_symptoms = sorted(list(all_symptoms))
+priority = {
+    "chest pain": 5,
+    "shortness of breath": 5,
+    "breathing difficulty": 5,
+    "fever": 3,
+    "vomiting": 3,
+    "abdominal pain": 3,
+    "cough": 3,
+    "headache": 2,
+    "fatigue": 2
+}
 
 # =========================
-# INPUT SECTION
+# ALL SYMPTOMS (AUTO)
 # =========================
-st.subheader("🩺 Select Symptoms")
+all_symptoms = sorted(set(sum(disease_rules.values(), [])))
 
-selected_symptoms = st.multiselect(
-    "Search & select symptoms:",
-    options=all_symptoms
-)
+# =========================
+# INPUT
+# =========================
+selected = st.multiselect("🩺 Select Symptoms", all_symptoms)
 
-age = st.number_input("Enter Age", min_value=1, max_value=100)
-
-days = st.number_input("How many days?", min_value=0)
-cold_food = st.selectbox("Cold items?", ["no", "yes"])
+age = st.number_input("Age", 1, 100)
+days = st.number_input("How many days?", 0)
 fever = st.selectbox("Fever?", ["no", "yes"])
 
 # =========================
-# DISEASE INFO (SHORT SAMPLE - KEEP YOUR FULL ONE)
+# DISEASE INFO (SHORT SAMPLE - ADD YOUR FULL)
 # =========================
 disease_info = {
     "Allergy": {
@@ -198,34 +193,47 @@ disease_info = {
 # =========================
 if st.button("Predict"):
 
-    if not selected_symptoms:
+    if not selected:
         st.warning("Please select symptoms")
         st.stop()
 
-    user_text = ", ".join(selected_symptoms)
+    scores = {}
 
-    # Convert to vector
-    user_vec = vectorizer.transform([user_text])
+    for disease, symptoms in disease_rules.items():
+        match_count = len(set(selected) & set(symptoms))
 
-    probs = model.predict_proba(user_vec)[0]
-    classes = model.classes_
+        # base score
+        score = match_count
 
-    # Top 3 predictions
-    top3_idx = probs.argsort()[-3:][::-1]
+        # priority boost
+        for s in selected:
+            if s in symptoms:
+                score += priority.get(s, 1)
 
+        # normalize by disease size (IMPORTANT FIX)
+        score = score / len(symptoms)
+
+        scores[disease] = score
+
+    # SORT
+    sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+    # =========================
+    # TOP 3
+    # =========================
     st.subheader("🔝 Top 3 Predictions")
 
-    for i in top3_idx:
-        st.write(f"**{classes[i]}** → {round(probs[i]*100,2)}%")
+    for d, s in sorted_scores[:3]:
+        st.write(f"{d} → {round(s*100,2)}%")
 
-    # Best prediction
-    best_idx = top3_idx[0]
-    disease = classes[best_idx]
-    confidence = round(probs[best_idx] * 100, 2)
+    best_disease, best_score = sorted_scores[0]
 
     # =========================
-    # BOOST LOGIC
+    # CONFIDENCE
     # =========================
+    confidence = round(best_score * 100, 2)
+
+    # BOOST
     if days > 3:
         confidence += 5
     if fever == "yes":
@@ -251,38 +259,29 @@ if st.button("Predict"):
     # =========================
     st.subheader("🔍 Final Result")
 
-    st.markdown(f"## 🩺 **{disease}**")
-    st.markdown(f"### Confidence: {confidence}%")
-
-    # Confidence bar
+    st.markdown(f"## 🩺 {best_disease}")
+    st.write(f"Confidence: {confidence}%")
     st.progress(int(confidence))
 
     st.markdown(
-        f"### Severity: <span style='color:{color}'>{severity}</span>",
+        f"<span style='color:{color}'>Severity: {severity}</span>",
         unsafe_allow_html=True
     )
 
-    if severity == "Severe":
-        st.error("⚠️ High risk - consult doctor")
-
     # =========================
-    # WHY EXPLANATION
+    # WHY
     # =========================
     st.subheader("🤖 Why this disease?")
 
-    disease_rows = df[df['Disease'] == disease]
-    sample_symptoms = disease_rows.iloc[0]['Symptoms'].split(", ")
-
-    matched = set(sample_symptoms) & set(selected_symptoms)
-
-    st.write("Matched symptoms:", list(matched))
+    matched = list(set(selected) & set(disease_rules[best_disease]))
+    st.write("Matched symptoms:", matched)
 
     # =========================
     # ADVICE
     # =========================
     st.subheader("💊 Advice")
 
-    info = disease_info.get(disease)
+    info = disease_info.get(best_disease)
 
     if info:
         for tip in info["advice"]:
