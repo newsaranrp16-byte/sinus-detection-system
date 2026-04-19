@@ -44,7 +44,7 @@ fever = st.selectbox("Fever?", ["No", "Yes"])
 # =========================
 # DISEASE RULES (ALL)
 # =========================
-disease_info = {
+disease_rules = {
     "Allergy": {
         "advice": ["To prevent and manage Allergies, try to identify and avoid triggers such as dust, pollen, certain foods, or strong smells. Keep your surroundings clean by regularly dusting and washing bedding to reduce exposure to allergens. Maintain good personal hygiene, like washing hands and face after coming from outside. Eating a healthy diet and staying hydrated can support your immune system. If symptoms occur, follow medical advice and take prescribed medicines if needed. Regular check-ups can also help in controlling allergies effectively."],
         "tamil": "உங்களுக்கு அலர்ஜி இருந்தால், அதற்கு காரணமான தூசி, சில உணவுகள் அல்லது பூமருவுகள் போன்றவற்றை தவிர்க்க வேண்டும். உங்கள் சுற்றுப்புறத்தை சுத்தமாக வைத்துக் கொள்ளுங்கள், அடிக்கடி கைகளை கழுவுங்கள், மற்றும் ஆரோக்கியமான வாழ்க்கை முறையை பின்பற்றுங்கள். அறிகுறிகள் அதிகமாக இருந்தால் மருத்துவரை அணுகி மருந்துகளை சரியாக எடுத்துக்கொள்ளுங்கள்." 
