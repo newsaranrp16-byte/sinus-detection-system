@@ -5,14 +5,13 @@ from sklearn.linear_model import LogisticRegression
 
 st.set_page_config(page_title="Smart Tamil Medical Assistant", layout="wide")
 
-st.title("🧠 Smart Tamil Medical Assistant (ML Powered)")
+st.title("🧠 Smart Tamil Medical Assistant")
 
 # =========================
 # LOAD DATASET
 # =========================
 df = pd.read_csv("dataset.csv", sep="\t")
 df.columns = df.columns.str.strip()
-
 df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
 
 # =========================
@@ -26,16 +25,24 @@ model = LogisticRegression(max_iter=1000)
 model.fit(X, y)
 
 # =========================
-# DISEASE RULES (HYBRID)
+# ALL SYMPTOMS (FOR SELECT)
 # =========================
-age_restrictions = {
-    "Stroke": 40,
-    "Heart Disease": 35,
-    "Hypertension": 30
-}
+all_symptoms = sorted(set(
+    [sym.strip() for row in df['Symptoms'] for sym in row.split(',')]
+))
 
 # =========================
-# DISEASE INFO
+# INPUT
+# =========================
+st.subheader("🩺 Select Symptoms")
+selected_symptoms = st.multiselect("Choose symptoms", all_symptoms)
+
+age = st.number_input("Age", 1, 100)
+days = st.number_input("How many days?", 0, 30)
+fever = st.selectbox("Fever?", ["No", "Yes"])
+
+# =========================
+# DISEASE RULES (ALL)
 # =========================
 disease_info = {
     "Allergy": {
@@ -162,21 +169,49 @@ disease_info = {
 }
 
 # =========================
-# SYMPTOMS LIST
+# IMPORTANT SYMPTOMS (BOOST)
 # =========================
-all_symptoms = sorted(set(
-    [sym.strip() for row in df['Symptoms'] for sym in row.split(',')]
-))
+important_symptoms = {
+    "Allergy": ["sneezing", "runny nose"],
+    "Thyroid Disorder": ["weight gain", "fatigue"],
+    "Influenza": ["fever", "body ache"],
+    "Stroke": ["weakness", "speech difficulty"],
+    "Heart Disease": ["chest pain", "shortness of breath"],
+    "Food Poisoning": ["vomiting", "diarrhea"],
+    "Bronchitis": ["cough", "chest discomfort"],
+    "COVID-19": ["fever", "breathing difficulty"],
+    "Dermatitis": ["rash", "itching"],
+    "Diabetes": ["frequent urination", "weight loss"],
+    "Arthritis": ["joint pain", "swelling"],
+    "Sinusitis": ["headache", "nasal congestion"],
+    "Dementia": ["memory loss", "confusion"],
+    "Parkinson's": ["tremor", "slow movement"],
+    "Obesity": ["weight gain", "fatigue"],
+    "Asthma": ["breathing difficulty", "wheezing"],
+    "Depression": ["sadness", "fatigue"],
+    "Gastritis": ["abdominal pain", "burning sensation"],
+    "Liver Disease": ["jaundice", "abdominal pain"],
+    "Epilepsy": ["seizures"],
+    "IBS": ["abdominal pain", "bloating"],
+    "Tuberculosis": ["chronic cough", "weight loss"],
+    "Pneumonia": ["fever", "chest pain"],
+    "Anemia": ["fatigue", "pale skin"],
+    "Migraine": ["headache", "light sensitivity"],
+    "Common Cold": ["runny nose", "sneezing"],
+    "Anxiety": ["nervousness", "restlessness"],
+    "Chronic Kidney Disease": ["swelling", "fatigue"],
+    "Ulcer": ["abdominal pain", "burning pain"],
+    "Hypertension": ["headache", "dizziness"]
+}
 
 # =========================
-# INPUT
+# AGE FILTER
 # =========================
-st.subheader("🩺 Select Symptoms")
-selected_symptoms = st.multiselect("Choose symptoms", all_symptoms)
-
-age = st.number_input("Age", 1, 100)
-days = st.number_input("How many days?", 0, 30)
-fever = st.selectbox("Fever?", ["No", "Yes"])
+age_restrictions = {
+    "Stroke": 40,
+    "Heart Disease": 35,
+    "Hypertension": 30
+}
 
 # =========================
 # PREDICT
@@ -190,42 +225,50 @@ if st.button("Predict"):
     user_input = " ".join(selected_symptoms)
     user_vec = vectorizer.transform([user_input])
 
-    # ML Prediction
     probs = model.predict_proba(user_vec)[0]
     classes = model.classes_
 
-    results = dict(zip(classes, probs * 100))
+    final_scores = {}
 
-    # =========================
-    # APPLY AGE FILTER
-    # =========================
-    for disease in results:
-        if disease in age_restrictions:
-            if age < age_restrictions[disease]:
-                results[disease] *= 0.1   # reduce strongly
+    for i, disease in enumerate(classes):
 
-    # =========================
-    # BOOST CONDITIONS
-    # =========================
-    if fever == "Yes":
-        for disease in results:
-            if "fever" in disease.lower():
-                results[disease] += 5
+        ml_score = probs[i]
 
-    # =========================
-    # SORT RESULTS
-    # =========================
-    sorted_results = sorted(results.items(), key=lambda x: x[1], reverse=True)
+        # RULE MATCH
+        rules = disease_rules.get(disease, [])
+        match_count = len(set(selected_symptoms) & set(rules))
+        rule_score = match_count / (len(rules) + 1)
 
+        # IMPORTANT BOOST
+        boost = 0
+        if disease in important_symptoms:
+            if any(sym in selected_symptoms for sym in important_symptoms[disease]):
+                boost = 0.2
+
+        # FINAL SCORE
+        score = (ml_score * 0.6) + (rule_score * 0.4) + boost
+
+        # AGE FILTER
+        if disease in age_restrictions and age < age_restrictions[disease]:
+            score *= 0.1
+
+        final_scores[disease] = score
+
+    # REMOVE LOW
+    filtered = {k: v for k, v in final_scores.items() if v > 0.05}
+
+    if not filtered:
+        st.warning("No strong match found")
+        st.stop()
+
+    # NORMALIZE
+    total = sum(filtered.values())
+    normalized = {k: (v / total) * 100 for k, v in filtered.items()}
+
+    sorted_results = sorted(normalized.items(), key=lambda x: x[1], reverse=True)
     top3 = sorted_results[:3]
 
     best_disease, confidence = top3[0]
-
-    # =========================
-    # EMERGENCY ALERT
-    # =========================
-    if "chest pain" in selected_symptoms or "breathing difficulty" in selected_symptoms:
-        st.error("🚨 Please consult doctor immediately")
 
     # =========================
     # OUTPUT
@@ -238,7 +281,7 @@ if st.button("Predict"):
     st.success(f"🩺 {best_disease}")
     st.write("Confidence:", round(confidence,2), "%")
 
-    # Severity
+    # SEVERITY
     if confidence < 40:
         st.markdown("### 🟢 Mild")
     elif confidence < 70:
@@ -248,26 +291,16 @@ if st.button("Predict"):
 
     # WHY
     st.subheader("🤖 Why this disease?")
-    st.write("Based on ML pattern matching of your symptoms")
+    matched = list(set(selected_symptoms) & set(disease_rules.get(best_disease, [])))
+    st.write("Matched symptoms:", matched if matched else "ML pattern match")
 
     # =========================
-    # ADVICE
+    # SIMPLE ADVICE + TAMIL (NO ERROR)
     # =========================
     st.subheader("💊 Advice")
-    info = disease_info.get(best_disease)
+    st.write("• Take rest")
+    st.write("• Drink fluids")
+    st.write("• Consult doctor if symptoms persist")
 
-    if info:
-        for tip in info["advice"]:
-            st.write("•", tip)
-    else:
-        st.write("• Please consult doctor")
-
-    # =========================
-    # TAMIL
-    # =========================
     st.subheader("🧠 தமிழ் விளக்கம்")
-
-    if info:
-        st.write(info["tamil"])
-    else:
-        st.write("மருத்துவரை அணுகவும்.")
+    st.write("இந்த அறிகுறிகள் அடிப்படையில் இந்த நோய் கணிக்கப்பட்டுள்ளது. மேலும் துல்லியமான சிகிச்சைக்காக மருத்துவரை அணுகவும்.")
