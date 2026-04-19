@@ -5,7 +5,7 @@ from sklearn.linear_model import LogisticRegression
 
 st.set_page_config(page_title="Smart Tamil Medical Assistant", layout="wide")
 
-st.title("🧠 Smart Tamil Medical Assistant")
+st.title("🧠 Smart Tamil Medical Assistant (ML + Rules)")
 
 # =========================
 # LOAD DATASET
@@ -25,26 +25,54 @@ model = LogisticRegression(max_iter=1000)
 model.fit(X, y)
 
 # =========================
-# ALL SYMPTOMS (FOR SELECT)
+# AGE FILTER
 # =========================
-all_symptoms = sorted(set(
-    [sym.strip() for row in df['Symptoms'] for sym in row.split(',')]
-))
+age_restrictions = {
+    "Stroke": 40,
+    "Heart Disease": 35,
+    "Hypertension": 30
+}
 
 # =========================
-# INPUT
-# =========================
-st.subheader("🩺 Select Symptoms")
-selected_symptoms = st.multiselect("Choose symptoms", all_symptoms)
-
-age = st.number_input("Age", 1, 100)
-days = st.number_input("How many days?", 0, 30)
-fever = st.selectbox("Fever?", ["No", "Yes"])
-
-# =========================
-# DISEASE RULES (ALL)
+# RULE BOOST (VERY IMPORTANT)
 # =========================
 disease_rules = {
+    "Allergy": ["sneezing", "runny nose", "rash"],
+    "Thyroid Disorder": ["weight gain", "fatigue"],
+    "Influenza": ["fever", "body ache"],
+    "Stroke": ["weakness", "speech difficulty"],
+    "Heart Disease": ["chest pain", "shortness of breath"],
+    "Food Poisoning": ["vomiting", "diarrhea"],
+    "Bronchitis": ["cough", "chest discomfort"],
+    "COVID-19": ["fever", "cough", "breathing difficulty"],
+    "Dermatitis": ["rash", "itching"],
+    "Diabetes": ["frequent urination", "weight loss"],
+    "Arthritis": ["joint pain", "swelling"],
+    "Sinusitis": ["headache", "nasal congestion"],
+    "Dementia": ["memory loss", "confusion"],
+    "Parkinson's": ["tremor", "slow movement"],
+    "Obesity": ["weight gain"],
+    "Asthma": ["breathing difficulty", "wheezing"],
+    "Depression": ["sadness", "fatigue"],
+    "Gastritis": ["abdominal pain", "burning sensation"],
+    "Liver Disease": ["jaundice", "abdominal pain"],
+    "Epilepsy": ["seizures"],
+    "IBS": ["abdominal pain", "bloating"],
+    "Tuberculosis": ["cough", "weight loss"],
+    "Pneumonia": ["fever", "chest pain"],
+    "Anemia": ["fatigue", "pale skin"],
+    "Migraine": ["headache", "light sensitivity"],
+    "Common Cold": ["runny nose", "sneezing"],
+    "Anxiety": ["nervousness"],
+    "Chronic Kidney Disease": ["swelling"],
+    "Ulcer": ["abdominal pain"],
+    "Hypertension": ["headache", "dizziness"]
+}
+
+# =========================
+# DISEASE INFO
+# =========================
+disease_info = {
     "Allergy": {
         "advice": ["To prevent and manage Allergies, try to identify and avoid triggers such as dust, pollen, certain foods, or strong smells. Keep your surroundings clean by regularly dusting and washing bedding to reduce exposure to allergens. Maintain good personal hygiene, like washing hands and face after coming from outside. Eating a healthy diet and staying hydrated can support your immune system. If symptoms occur, follow medical advice and take prescribed medicines if needed. Regular check-ups can also help in controlling allergies effectively."],
         "tamil": "உங்களுக்கு அலர்ஜி இருந்தால், அதற்கு காரணமான தூசி, சில உணவுகள் அல்லது பூமருவுகள் போன்றவற்றை தவிர்க்க வேண்டும். உங்கள் சுற்றுப்புறத்தை சுத்தமாக வைத்துக் கொள்ளுங்கள், அடிக்கடி கைகளை கழுவுங்கள், மற்றும் ஆரோக்கியமான வாழ்க்கை முறையை பின்பற்றுங்கள். அறிகுறிகள் அதிகமாக இருந்தால் மருத்துவரை அணுகி மருந்துகளை சரியாக எடுத்துக்கொள்ளுங்கள்." 
@@ -169,49 +197,22 @@ disease_rules = {
 }
 
 # =========================
-# IMPORTANT SYMPTOMS (BOOST)
+# ALL SYMPTOMS (NO TYPING)
 # =========================
-important_symptoms = {
-    "Allergy": ["sneezing", "runny nose"],
-    "Thyroid Disorder": ["weight gain", "fatigue"],
-    "Influenza": ["fever", "body ache"],
-    "Stroke": ["weakness", "speech difficulty"],
-    "Heart Disease": ["chest pain", "shortness of breath"],
-    "Food Poisoning": ["vomiting", "diarrhea"],
-    "Bronchitis": ["cough", "chest discomfort"],
-    "COVID-19": ["fever", "breathing difficulty"],
-    "Dermatitis": ["rash", "itching"],
-    "Diabetes": ["frequent urination", "weight loss"],
-    "Arthritis": ["joint pain", "swelling"],
-    "Sinusitis": ["headache", "nasal congestion"],
-    "Dementia": ["memory loss", "confusion"],
-    "Parkinson's": ["tremor", "slow movement"],
-    "Obesity": ["weight gain", "fatigue"],
-    "Asthma": ["breathing difficulty", "wheezing"],
-    "Depression": ["sadness", "fatigue"],
-    "Gastritis": ["abdominal pain", "burning sensation"],
-    "Liver Disease": ["jaundice", "abdominal pain"],
-    "Epilepsy": ["seizures"],
-    "IBS": ["abdominal pain", "bloating"],
-    "Tuberculosis": ["chronic cough", "weight loss"],
-    "Pneumonia": ["fever", "chest pain"],
-    "Anemia": ["fatigue", "pale skin"],
-    "Migraine": ["headache", "light sensitivity"],
-    "Common Cold": ["runny nose", "sneezing"],
-    "Anxiety": ["nervousness", "restlessness"],
-    "Chronic Kidney Disease": ["swelling", "fatigue"],
-    "Ulcer": ["abdominal pain", "burning pain"],
-    "Hypertension": ["headache", "dizziness"]
-}
+all_symptoms = sorted(set(
+    [sym.strip() for row in df['Symptoms'] for sym in row.split(',')]
+))
 
 # =========================
-# AGE FILTER
+# INPUT
 # =========================
-age_restrictions = {
-    "Stroke": 40,
-    "Heart Disease": 35,
-    "Hypertension": 30
-}
+st.subheader("🩺 Select Symptoms")
+selected_symptoms = st.multiselect("Choose symptoms", all_symptoms)
+
+st.subheader("📋 Condition Details")
+age = st.number_input("Age", 1, 100)
+days = st.number_input("How many days?", 0, 30)
+fever = st.selectbox("Fever?", ["No", "Yes"])
 
 # =========================
 # PREDICT
@@ -222,53 +223,65 @@ if st.button("Predict"):
         st.warning("Please select symptoms")
         st.stop()
 
+    st.write("🔧 Selected Symptoms:", selected_symptoms)
+
     user_input = " ".join(selected_symptoms)
     user_vec = vectorizer.transform([user_input])
 
+    # ML Prediction
     probs = model.predict_proba(user_vec)[0]
     classes = model.classes_
+    results = dict(zip(classes, probs * 100))
 
-    final_scores = {}
+    # =========================
+    # AGE FILTER
+    # =========================
+    for disease in results:
+        if disease in age_restrictions:
+            if age < age_restrictions[disease]:
+                results[disease] *= 0.2
 
-    for i, disease in enumerate(classes):
+    # =========================
+    # RULE BOOST
+    # =========================
+    for disease, symptoms_list in disease_rules.items():
+        match_count = len(set(selected_symptoms) & set(symptoms_list))
+        if match_count > 0:
+            results[disease] += match_count * 20
 
-        ml_score = probs[i]
+    # =========================
+    # EXTRA BOOST
+    # =========================
+    if fever == "Yes":
+        for disease in results:
+            if "fever" in disease.lower():
+                results[disease] += 10
 
-        # RULE MATCH
-        rules = disease_rules.get(disease, [])
-        match_count = len(set(selected_symptoms) & set(rules))
-        rule_score = match_count / (len(rules) + 1)
+    if days > 3:
+        for disease in results:
+            results[disease] += 5
 
-        # IMPORTANT BOOST
-        boost = 0
-        if disease in important_symptoms:
-            if any(sym in selected_symptoms for sym in important_symptoms[disease]):
-                boost = 0.2
+    # =========================
+    # NORMALIZE (IMPORTANT)
+    # =========================
+    max_score = max(results.values())
 
-        # FINAL SCORE
-        score = (ml_score * 0.6) + (rule_score * 0.4) + boost
+    for disease in results:
+        results[disease] = (results[disease] / max_score) * 100
 
-        # AGE FILTER
-        if disease in age_restrictions and age < age_restrictions[disease]:
-            score *= 0.1
+    # =========================
+    # SORT
+    # =========================
+    sorted_results = sorted(results.items(), key=lambda x: x[1], reverse=True)
 
-        final_scores[disease] = score
-
-    # REMOVE LOW
-    filtered = {k: v for k, v in final_scores.items() if v > 0.05}
-
-    if not filtered:
-        st.warning("No strong match found")
-        st.stop()
-
-    # NORMALIZE
-    total = sum(filtered.values())
-    normalized = {k: (v / total) * 100 for k, v in filtered.items()}
-
-    sorted_results = sorted(normalized.items(), key=lambda x: x[1], reverse=True)
     top3 = sorted_results[:3]
-
     best_disease, confidence = top3[0]
+
+    # =========================
+    # EMERGENCY ALERT
+    # =========================
+    if "chest pain" in selected_symptoms or "breathing difficulty" in selected_symptoms:
+        st.error("🚨 Please consult doctor immediately")
 
     # =========================
     # OUTPUT
@@ -281,7 +294,7 @@ if st.button("Predict"):
     st.success(f"🩺 {best_disease}")
     st.write("Confidence:", round(confidence,2), "%")
 
-    # SEVERITY
+    # Severity
     if confidence < 40:
         st.markdown("### 🟢 Mild")
     elif confidence < 70:
@@ -292,15 +305,30 @@ if st.button("Predict"):
     # WHY
     st.subheader("🤖 Why this disease?")
     matched = list(set(selected_symptoms) & set(disease_rules.get(best_disease, [])))
-    st.write("Matched symptoms:", matched if matched else "ML pattern match")
+
+    if matched:
+        st.write("Matched symptoms:", matched)
+    else:
+        st.write("Based on ML prediction")
 
     # =========================
-    # SIMPLE ADVICE + TAMIL (NO ERROR)
+    # ADVICE
     # =========================
     st.subheader("💊 Advice")
-    st.write("• Take rest")
-    st.write("• Drink fluids")
-    st.write("• Consult doctor if symptoms persist")
+    info = disease_info.get(best_disease)
 
+    if info:
+        for tip in info["advice"]:
+            st.write("•", tip)
+    else:
+        st.write("• Please consult doctor")
+
+    # =========================
+    # TAMIL
+    # =========================
     st.subheader("🧠 தமிழ் விளக்கம்")
-    st.write("இந்த அறிகுறிகள் அடிப்படையில் இந்த நோய் கணிக்கப்பட்டுள்ளது. மேலும் துல்லியமான சிகிச்சைக்காக மருத்துவரை அணுகவும்.")
+
+    if info:
+        st.write(info["tamil"])
+    else:
+        st.write("மருத்துவரை அணுகவும்.")
