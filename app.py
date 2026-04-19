@@ -302,15 +302,6 @@ if st.button("Predict"):
     else:
         st.markdown("### 🔴 Severe")
 
-    # WHY
-    st.subheader("🤖 Why this disease?")
-    matched = list(set(selected_symptoms) & set(disease_rules.get(best_disease, [])))
-
-    if matched:
-        st.write("Matched symptoms:", matched)
-    else:
-        st.write("Based on ML prediction")
-
     # =========================
     # ADVICE
     # =========================
