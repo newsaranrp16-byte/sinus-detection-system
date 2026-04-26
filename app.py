@@ -5,7 +5,7 @@ from sklearn.linear_model import LogisticRegression
 
 st.set_page_config(page_title="Smart Tamil Medical Assistant", layout="wide")
 
-st.title("🧠 Smart Tamil Medical Assistant (ML + Rules)")
+st.title("🧠 Smart Tamil Medical Assistant")
 
 # =========================
 # LOAD DATASET
