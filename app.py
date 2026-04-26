@@ -269,14 +269,37 @@ if st.button("Predict"):
     # =========================
     # FIXED SEVERITY LOGIC
     # =========================
-    symptom_count = len(selected_symptoms)
+   symptom_count = len(selected_symptoms)
 
-    if raw_confidence < 30 or symptom_count <= 2:
-        st.markdown("### 🟢 Mild")
-    elif raw_confidence < 70 or symptom_count <= 4:
+# =========================
+# DISEASE-SPECIFIC SEVERITY
+# =========================
+high_risk_diseases = ["Heart Disease", "Stroke", "Pneumonia"]
+medium_risk_diseases = ["Asthma", "Bronchitis", "Diabetes", "Hypertension"]
+
+if best_disease in high_risk_diseases:
+    if raw_confidence > 50 or symptom_count >= 3:
+        st.markdown("### 🔴 Severe")
+    elif raw_confidence > 25:
         st.markdown("### 🟠 Moderate")
     else:
+        st.markdown("### 🟢 Mild")
+
+elif best_disease in medium_risk_diseases:
+    if raw_confidence > 60 or symptom_count >= 4:
         st.markdown("### 🔴 Severe")
+    elif raw_confidence > 30:
+        st.markdown("### 🟠 Moderate")
+    else:
+        st.markdown("### 🟢 Mild")
+
+else:  # low-risk diseases
+    if raw_confidence > 70 or symptom_count >= 5:
+        st.markdown("### 🔴 Severe")
+    elif raw_confidence > 40 or symptom_count >= 3:
+        st.markdown("### 🟠 Moderate")
+    else:
+        st.markdown("### 🟢 Mild")
 
     # ADVICE
     st.subheader("💊 Advice")
