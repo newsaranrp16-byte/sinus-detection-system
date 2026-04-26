@@ -1,4 +1,4 @@
-import streamlit as st
+iimport streamlit as st
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -238,10 +238,10 @@ if st.button("Predict"):
         for disease in results:
             results[disease] += 3
 
-    # SAVE RAW SCORES (IMPORTANT)
+    # SAVE RAW SCORES
     raw_results = results.copy()
 
-    # NORMALIZE FOR DISPLAY
+    # NORMALIZE
     max_score = max(results.values())
     for disease in results:
         results[disease] = (results[disease] / max_score) * 100
@@ -253,11 +253,57 @@ if st.button("Predict"):
     best_disease, confidence = top3[0]
     raw_confidence = raw_results[best_disease]
 
+    # =========================
+    # CORRECT SYMPTOM COUNT
+    # =========================
+    matched_symptoms = set(selected_symptoms) & set(disease_rules.get(best_disease, []))
+
+    symptom_count = 0
+    for sym in selected_symptoms:
+        if sym in matched_symptoms:
+            symptom_count += 2
+        else:
+            symptom_count += 0.5
+
+    # =========================
+    # DISEASE-BASED SEVERITY
+    # =========================
+    high_risk = ["Heart Disease", "Stroke", "Pneumonia", "COVID-19"]
+    medium_risk = ["Asthma", "Bronchitis", "Diabetes", "Hypertension"]
+
+    if best_disease in high_risk:
+        if raw_confidence > 50 or symptom_count >= 3:
+            severity = "🔴 Severe"
+        elif raw_confidence > 25:
+            severity = "🟠 Moderate"
+        else:
+            severity = "🟢 Mild"
+
+    elif best_disease in medium_risk:
+        if raw_confidence > 60 or symptom_count >= 4:
+            severity = "🔴 Severe"
+        elif raw_confidence > 30:
+            severity = "🟠 Moderate"
+        else:
+            severity = "🟢 Mild"
+
+    else:
+        if raw_confidence > 70 or symptom_count >= 5:
+            severity = "🔴 Severe"
+        elif raw_confidence > 40 or symptom_count >= 3:
+            severity = "🟠 Moderate"
+        else:
+            severity = "🟢 Mild"
+
+    # =========================
     # EMERGENCY ALERT
+    # =========================
     if "chest pain" in selected_symptoms or "breathing difficulty" in selected_symptoms:
         st.error("🚨 Please consult doctor immediately")
 
+    # =========================
     # OUTPUT
+    # =========================
     st.subheader("🔝 Top 3 Predictions")
     for d, c in top3:
         st.write(f"{d} → {round(c,2)}%")
@@ -266,42 +312,11 @@ if st.button("Predict"):
     st.success(f"🩺 {best_disease}")
     st.write("Confidence:", round(confidence,2), "%")
 
+    st.markdown(f"### {severity}")
+
     # =========================
-    # FIXED SEVERITY LOGIC
-    # =========================
-   symptom_count = len(selected_symptoms)
-
-# =========================
-# DISEASE-SPECIFIC SEVERITY
-# =========================
-high_risk_diseases = ["Heart Disease", "Stroke", "Pneumonia"]
-medium_risk_diseases = ["Asthma", "Bronchitis", "Diabetes", "Hypertension"]
-
-if best_disease in high_risk_diseases:
-    if raw_confidence > 50 or symptom_count >= 3:
-        st.markdown("### 🔴 Severe")
-    elif raw_confidence > 25:
-        st.markdown("### 🟠 Moderate")
-    else:
-        st.markdown("### 🟢 Mild")
-
-elif best_disease in medium_risk_diseases:
-    if raw_confidence > 60 or symptom_count >= 4:
-        st.markdown("### 🔴 Severe")
-    elif raw_confidence > 30:
-        st.markdown("### 🟠 Moderate")
-    else:
-        st.markdown("### 🟢 Mild")
-
-else:  # low-risk diseases
-    if raw_confidence > 70 or symptom_count >= 5:
-        st.markdown("### 🔴 Severe")
-    elif raw_confidence > 40 or symptom_count >= 3:
-        st.markdown("### 🟠 Moderate")
-    else:
-        st.markdown("### 🟢 Mild")
-
     # ADVICE
+    # =========================
     st.subheader("💊 Advice")
     info = disease_info.get(best_disease)
 
@@ -311,7 +326,9 @@ else:  # low-risk diseases
     else:
         st.write("• Please consult doctor")
 
+    # =========================
     # TAMIL
+    # =========================
     st.subheader("🧠 தமிழ் விளக்கம்")
 
     if info:
