@@ -5,7 +5,7 @@ from sklearn.linear_model import LogisticRegression
 
 st.set_page_config(page_title="Smart Tamil Medical Assistant", layout="wide")
 
-st.title("🧠 Smart Tamil Medical Assistant")
+st.title("🧠 Smart Tamil Medical Assistant (ML + Rules Improved)")
 
 # =========================
 # LOAD DATASET
@@ -15,7 +15,7 @@ df.columns = df.columns.str.strip()
 df['Symptoms'] = df['Symptoms'].astype(str).str.lower()
 
 # =========================
-# TRAIN ML MODEL
+# TRAIN MODEL (SIMPLE MODEL)
 # =========================
 vectorizer = TfidfVectorizer()
 X = vectorizer.fit_transform(df['Symptoms'])
@@ -25,52 +25,57 @@ model = LogisticRegression(max_iter=1000)
 model.fit(X, y)
 
 # =========================
-# AGE FILTER
-# =========================
-age_restrictions = {
-    "Stroke": 40,
-    "Heart Disease": 35,
-    "Hypertension": 30
-}
-
-# =========================
-# RULE BOOST
+# RULES (IMPROVED)
 # =========================
 disease_rules = {
-    "Allergy": ["sneezing", "runny nose", "rash"],
-    "Thyroid Disorder": ["weight gain", "fatigue"],
-    "Influenza": ["fever", "body ache"],
-    "Stroke": ["weakness", "speech difficulty"],
-    "Heart Disease": ["chest pain", "shortness of breath"],
-    "Food Poisoning": ["vomiting", "diarrhea"],
-    "Bronchitis": ["cough", "chest discomfort"],
-    "COVID-19": ["fever", "cough", "breathing difficulty"],
-    "Dermatitis": ["rash", "itching"],
-    "Diabetes": ["frequent urination", "weight loss"],
-    "Arthritis": ["joint pain", "swelling"],
-    "Sinusitis": ["headache", "nasal congestion"],
+    "Allergy": ["sneezing", "runny nose", "rash", "itching"],
+    "Anemia": ["fatigue", "pale skin", "weakness"],
+    "Anxiety": ["nervousness", "restlessness"],
+    "Arthritis": ["joint pain", "swelling", "stiffness", "back pain"],
+    "Asthma": ["breathing difficulty", "wheezing", "chest tightness"],
+    
+    "Bronchitis": ["cough", "chest discomfort", "mucus"],
+    "Chronic Kidney Disease": ["swelling", "fatigue"],
+    "Common Cold": ["runny nose", "sneezing", "cough"],
+    "COVID-19": ["fever", "cough", "breathing difficulty", "loss of taste"],
+    
     "Dementia": ["memory loss", "confusion"],
-    "Parkinson's": ["tremor", "slow movement"],
-    "Obesity": ["weight gain"],
-    "Asthma": ["breathing difficulty", "wheezing"],
-    "Depression": ["sadness", "fatigue"],
-    "Gastritis": ["abdominal pain", "burning sensation"],
-    "Liver Disease": ["jaundice", "abdominal pain"],
-    "Epilepsy": ["seizures"],
-    "IBS": ["abdominal pain", "bloating"],
-    "Tuberculosis": ["cough", "weight loss"],
-    "Pneumonia": ["fever", "chest pain"],
-    "Anemia": ["fatigue", "pale skin"],
-    "Migraine": ["headache", "light sensitivity"],
-    "Common Cold": ["runny nose", "sneezing"],
-    "Anxiety": ["nervousness"],
-    "Chronic Kidney Disease": ["swelling"],
-    "Ulcer": ["abdominal pain"],
-    "Hypertension": ["headache", "dizziness"]
+    "Depression": ["sadness", "fatigue", "low energy"],
+    "Dermatitis": ["rash", "itching", "redness"],
+    "Diabetes": ["frequent urination", "weight loss", "increased thirst"],
+    
+    "Epilepsy": ["seizures", "loss of consciousness"],
+    
+    "Food Poisoning": ["vomiting", "diarrhea", "nausea"],
+    
+    "Gastritis": ["abdominal pain", "burning sensation", "bloating"],
+    
+    "Heart Disease": ["chest pain", "shortness of breath", "fatigue"],
+    "Hypertension": ["headache", "dizziness"],
+    
+    "IBS": ["abdominal pain", "bloating", "diarrhea"],
+    "Influenza": ["fever", "body ache", "cough"],
+    
+    "Liver Disease": ["jaundice", "abdominal pain", "fatigue"],
+    
+    "Migraine": ["headache", "light sensitivity", "nausea"],
+    
+    "Obesity": ["weight gain", "fatigue"],
+    
+    "Parkinson's": ["tremor", "slow movement", "stiffness"],
+    "Pneumonia": ["fever", "chest pain", "cough"],
+    
+    "Sinusitis": ["headache", "nasal congestion", "facial pain"],
+    "Stroke": ["weakness", "speech difficulty", "numbness"],
+    
+    "Thyroid Disorder": ["weight gain", "fatigue", "hair loss"],
+    "Tuberculosis": ["cough", "weight loss", "fever"],
+    
+    "Ulcer": ["abdominal pain", "burning sensation"]
 }
 
 # =========================
-# DISEASE INFO (short)
+# DISEASE INFO (SHORT)
 # =========================
 disease_info = {
     "Allergy": {
@@ -197,7 +202,7 @@ disease_info = {
 }
 
 # =========================
-# ALL SYMPTOMS
+# SYMPTOMS LIST
 # =========================
 all_symptoms = sorted(set(
     [sym.strip() for row in df['Symptoms'] for sym in row.split(',')]
@@ -209,7 +214,6 @@ all_symptoms = sorted(set(
 st.subheader("🩺 Select Symptoms")
 selected_symptoms = st.multiselect("Choose symptoms", all_symptoms)
 
-st.subheader("📋 Condition Details")
 age = st.number_input("Age", 1, 100)
 days = st.number_input("How many days?", 0, 30)
 fever = st.selectbox("Fever?", ["No", "Yes"])
@@ -226,23 +230,45 @@ if st.button("Predict"):
     user_input = " ".join(selected_symptoms)
     user_vec = vectorizer.transform([user_input])
 
-    # ML Prediction
+    # ML prediction (REAL values)
     probs = model.predict_proba(user_vec)[0]
     classes = model.classes_
     results = dict(zip(classes, probs * 100))
 
-    # AGE FILTER
-    for disease in results:
-        if disease in age_restrictions and age < age_restrictions[disease]:
-            results[disease] *= 0.2
+    # =========================
+    # SINGLE SYMPTOM FIX
+    # =========================
+    if len(selected_symptoms) == 1:
+        single = selected_symptoms[0]
+        results = {}
 
-    # RULE BOOST
-    for disease, symptoms_list in disease_rules.items():
-        match_count = len(set(selected_symptoms) & set(symptoms_list))
+        for disease, sym_list in disease_rules.items():
+            if single in sym_list:
+                results[disease] = 80
+
+        if not results:
+            st.warning("Not enough symptoms for accurate prediction")
+            st.stop()
+
+    # =========================
+    # RULE FILTER + BOOST
+    # =========================
+    filtered_results = {}
+
+    for disease, score in results.items():
+        rule_symptoms = disease_rules.get(disease, [])
+        match_count = len(set(selected_symptoms) & set(rule_symptoms))
+
         if match_count > 0:
-            results[disease] += match_count * 15
+            filtered_results[disease] = score + match_count * 10
 
-    # EXTRA BOOST
+    # fallback if no match
+    if filtered_results:
+        results = filtered_results
+
+    # =========================
+    # EXTRA CONDITIONS
+    # =========================
     if fever == "Yes":
         for disease in results:
             if "fever" in disease.lower():
@@ -252,62 +278,13 @@ if st.button("Predict"):
         for disease in results:
             results[disease] += 3
 
-    # SAVE RAW SCORES
-    raw_results = results.copy()
-
-    # NORMALIZE
-    max_score = max(results.values())
-    for disease in results:
-        results[disease] = (results[disease] / max_score) * 100
-
+    # =========================
     # SORT
+    # =========================
     sorted_results = sorted(results.items(), key=lambda x: x[1], reverse=True)
     top3 = sorted_results[:3]
 
     best_disease, confidence = top3[0]
-    raw_confidence = raw_results[best_disease]
-
-    # =========================
-    # CORRECT SYMPTOM COUNT
-    # =========================
-    matched_symptoms = set(selected_symptoms) & set(disease_rules.get(best_disease, []))
-
-    symptom_count = 0
-    for sym in selected_symptoms:
-        if sym in matched_symptoms:
-            symptom_count += 2
-        else:
-            symptom_count += 0.5
-
-    # =========================
-    # DISEASE-BASED SEVERITY
-    # =========================
-    high_risk = ["Heart Disease", "Stroke", "Pneumonia", "COVID-19"]
-    medium_risk = ["Asthma", "Bronchitis", "Diabetes", "Hypertension"]
-
-    if best_disease in high_risk:
-        if raw_confidence > 50 or symptom_count >= 3:
-            severity = "🔴 Severe"
-        elif raw_confidence > 25:
-            severity = "🟠 Moderate"
-        else:
-            severity = "🟢 Mild"
-
-    elif best_disease in medium_risk:
-        if raw_confidence > 60 or symptom_count >= 4:
-            severity = "🔴 Severe"
-        elif raw_confidence > 30:
-            severity = "🟠 Moderate"
-        else:
-            severity = "🟢 Mild"
-
-    else:
-        if raw_confidence > 70 or symptom_count >= 5:
-            severity = "🔴 Severe"
-        elif raw_confidence > 40 or symptom_count >= 3:
-            severity = "🟠 Moderate"
-        else:
-            severity = "🟢 Mild"
 
     # =========================
     # EMERGENCY ALERT
@@ -326,7 +303,18 @@ if st.button("Predict"):
     st.success(f"🩺 {best_disease}")
     st.write("Confidence:", round(confidence,2), "%")
 
-    st.markdown(f"### {severity}")
+    # =========================
+    # SEVERITY (FIXED LOGIC)
+    # =========================
+    symptom_count = len(selected_symptoms)
+    raw_confidence = confidence
+
+    if raw_confidence < 40 and symptom_count <= 2:
+        st.markdown("### 🟢 Mild")
+    elif raw_confidence < 70 or symptom_count <= 4:
+        st.markdown("### 🟠 Moderate")
+    else:
+        st.markdown("### 🔴 Severe")
 
     # =========================
     # ADVICE
