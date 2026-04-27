@@ -38,6 +38,7 @@ age_restrictions = {
 # =========================
 disease_rules = {
     "Allergy": ["sneezing", "runny nose", "rash"],
+    "Thyroid Disorder": ["weight gain", "fatigue"],
     "Influenza": ["fever", "body ache"],
     "Stroke": ["weakness", "speech difficulty"],
     "Heart Disease": ["chest pain", "shortness of breath"],
@@ -48,11 +49,24 @@ disease_rules = {
     "Diabetes": ["frequent urination", "weight loss"],
     "Arthritis": ["joint pain", "swelling"],
     "Sinusitis": ["headache", "nasal congestion"],
+    "Dementia": ["memory loss", "confusion"],
+    "Parkinson's": ["tremor", "slow movement"],
+    "Obesity": ["weight gain"],
     "Asthma": ["breathing difficulty", "wheezing"],
     "Depression": ["sadness", "fatigue"],
-    "Gastritis": ["abdominal pain"],
-    "Migraine": ["headache"],
-    "Common Cold": ["runny nose", "sneezing"]
+    "Gastritis": ["abdominal pain", "burning sensation"],
+    "Liver Disease": ["jaundice", "abdominal pain"],
+    "Epilepsy": ["seizures"],
+    "IBS": ["abdominal pain", "bloating"],
+    "Tuberculosis": ["cough", "weight loss"],
+    "Pneumonia": ["fever", "chest pain"],
+    "Anemia": ["fatigue", "pale skin"],
+    "Migraine": ["headache", "light sensitivity"],
+    "Common Cold": ["runny nose", "sneezing"],
+    "Anxiety": ["nervousness"],
+    "Chronic Kidney Disease": ["swelling"],
+    "Ulcer": ["abdominal pain"],
+    "Hypertension": ["headache", "dizziness"]
 }
 
 # =========================
